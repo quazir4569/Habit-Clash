@@ -7,7 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
 @Composable
-fun NavigationApp(authViewModel: AuthViewModel){
+fun NavigationApp(modifer: Modifier, authViewModel: AuthViewModel){
 
     val navController = rememberNavController()
 
