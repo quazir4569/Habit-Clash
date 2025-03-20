@@ -1,27 +1,40 @@
-package hexis.habitclash.ui
+package hexis.habitclash
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 
 @Composable
-fun LoginScreen(navController: NavController) {
+fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+
+    val authState = authViewModel.authState.observeAsState()
+    val context = LocalContext.current
+
+    LaunchedEffect(authState.value) {
+        when(authState.value){
+            is AuthState.Authenticated -> navController.navigate("Test_Home_Screen")
+            is AuthState.Error -> Toast.makeText(context,
+                (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
+            else -> Unit
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -85,12 +98,17 @@ fun LoginScreen(navController: NavController) {
 
         // Login Button
         Button(
-            onClick = { /* TODO: Navigate to Dashboard */ },
+            onClick = {
+                authViewModel.login(email, password)
+            },
+
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6)),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+
+            enabled = authState.value !== AuthState.Loading
         ) {
             Text(text = "Log In", fontSize = 18.sp, color = Color.White)
         }
@@ -98,7 +116,9 @@ fun LoginScreen(navController: NavController) {
         Spacer(modifier = Modifier.height(30.dp))
 
         // Register Button
-        TextButton(onClick = { /* TODO: Navigate to Register */ }) {
+        TextButton(onClick = {
+            navController.navigate("Registration_Screen")
+        }) {
             Text(
                 text = "Register",
                 fontSize = 16.sp,
@@ -108,9 +128,5 @@ fun LoginScreen(navController: NavController) {
         }
     }
 }
-@Preview(showBackground = true)
-@Composable
-fun LoginScreenPreview() {
-    LoginScreen(navController = rememberNavController())
-}
+
 

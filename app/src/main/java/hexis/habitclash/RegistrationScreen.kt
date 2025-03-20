@@ -1,5 +1,6 @@
 package hexis.habitclash.ui
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -7,9 +8,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -17,13 +20,29 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import com.google.android.play.integrity.internal.n
+import hexis.habitclash.AuthState
+import hexis.habitclash.AuthViewModel
 
 @Composable
-fun RegistrationScreen(navController: NavController?) {
+fun RegistrationScreen(navController: NavController, authViewModel: AuthViewModel) {
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+
+    val authState = authViewModel.authState.observeAsState()
+    val context = LocalContext.current
+
+    LaunchedEffect(authState.value) {
+        when(authState.value){
+            is AuthState.Authenticated -> navController.navigate("Test_Home_Screen")
+            is AuthState.Error -> Toast.makeText(context,
+                (authState.value as AuthState.Error).message,Toast.LENGTH_SHORT).show()
+            else -> Unit
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -142,20 +161,14 @@ fun RegistrationScreen(navController: NavController?) {
         // Register Button with Basic Validation
         Button(
             onClick = {
-                if (firstName.isNotEmpty() && lastName.isNotEmpty() &&
-                    android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() &&
-                    password.length >= 8
-                ) {
-                    println("Registration successful for $email")
-                } else {
-                    println("Invalid input: Check all fields and password requirements")
-                }
+                authViewModel.registration(email, password)
             },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6)),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
-            shape = RoundedCornerShape(8.dp)
+            shape = RoundedCornerShape(8.dp),
+            enabled = authState.value !== AuthState.Loading
         ) {
             Text(text = "Register", fontSize = 18.sp, color = Color.White)
         }
@@ -164,9 +177,7 @@ fun RegistrationScreen(navController: NavController?) {
 
         // Back to Login Link
         TextButton(onClick = {
-            if (navController != null) {
-                navController.navigate("login")
-            }
+            navController.navigate("Login_Screen")
         }) {
             Text(
                 text = "Already have an account? Log In",
@@ -177,8 +188,4 @@ fun RegistrationScreen(navController: NavController?) {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun RegistrationScreenPreview() {
-    RegistrationScreen(navController = null)
-}
+
