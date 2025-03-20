@@ -23,8 +23,6 @@ class MainActivity : ComponentActivity() {
                     NavigationApp(modifier = Modifier.padding(innerPadding), authViewModel = authViewModel)
                 }
             }
-            }
         }
     }
-
-
+}
