@@ -1,4 +1,4 @@
-package hexis.habitclash.ui
+package hexis.habitclash
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -16,14 +16,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
-import com.google.android.play.integrity.internal.n
-import hexis.habitclash.AuthState
-import hexis.habitclash.AuthViewModel
 
 @Composable
 fun RegistrationScreen(navController: NavController, authViewModel: AuthViewModel) {
