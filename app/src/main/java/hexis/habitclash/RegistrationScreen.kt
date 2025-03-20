@@ -32,7 +32,7 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
 
     LaunchedEffect(authState.value) {
         when(authState.value){
-            is AuthState.Authenticated -> navController.navigate("Test_Home_Screen")
+            is AuthState.Authenticated -> navController.navigate("Dashboard_Screen")
             is AuthState.Error -> Toast.makeText(context,
                 (authState.value as AuthState.Error).message,Toast.LENGTH_SHORT).show()
             else -> Unit

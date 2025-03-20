@@ -21,10 +21,9 @@ fun NavigationApp(modifier: Modifier = Modifier, authViewModel: AuthViewModel){
             RegistrationScreen(navController, authViewModel)
         }
 
-        composable("Test_Home_Screen"){
-            TestHomeScreen(navController, authViewModel)
+        composable("Dashboard_Screen"){
+            DashboardScreen(navController, authViewModel)
         }
 
     } )
-
 }
