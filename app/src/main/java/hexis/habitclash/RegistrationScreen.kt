@@ -3,7 +3,6 @@ package hexis.habitclash
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -22,8 +21,7 @@ import androidx.navigation.NavController
 
 @Composable
 fun RegistrationScreen(navController: NavController, authViewModel: AuthViewModel) {
-    var firstName by remember { mutableStateOf("") }
-    var lastName by remember { mutableStateOf("") }
+    var fullName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
@@ -42,102 +40,94 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFD3E0EA))
+            .background(Color(0xFFF8FAFC))
             .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Spacer(modifier = Modifier.height(40.dp))
-
-        // Circular Logo Placeholder
-        Box(
-            modifier = Modifier
-                .size(100.dp)
-                .background(Color.Gray, shape = CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "LOGO WILL GO HERE",
-                color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Welcome Text
+        // App Title
         Text(
-            text = "WELCOME! REGISTER TO BEGIN",
-            fontSize = 18.sp,
+            text = "Create an Account",
+            fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = Color.Black
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(30.dp))
 
-        // First Name and Last Name Fields
-        Row(
+        // Full Name Field
+        Text(
+            text = "Full Name:",
+            color = Color(0xFF7A7A7A),
+            fontWeight = FontWeight.Normal,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+        )
+        OutlinedTextField(
+            value = fullName,
+            onValueChange = { fullName = it },
+            placeholder = { Text("Enter your full name", color = Color(0xFF7A7A7A)) },
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            OutlinedTextField(
-                value = firstName,
-                onValueChange = { firstName = it },
-                label = { Text("First Name") },
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 4.dp),
-                shape = RoundedCornerShape(8.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF3B82F6),
-                    unfocusedBorderColor = Color.Gray
-                )
+            shape = RoundedCornerShape(28.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFF2563EB),
+                unfocusedBorderColor = Color(0xFFCECECE),
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White
             )
-            OutlinedTextField(
-                value = lastName,
-                onValueChange = { lastName = it },
-                label = { Text("Last Name") },
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 4.dp),
-                shape = RoundedCornerShape(8.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF3B82F6),
-                    unfocusedBorderColor = Color.Gray
-                )
-            )
-        }
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // Email Field
+        Text(
+            text = "Email:",
+            color = Color(0xFF7A7A7A),
+            fontWeight = FontWeight.Normal,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+        )
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("Email") },
+            placeholder = { Text("Enter your email", color = Color(0xFF7A7A7A)) },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Email),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(28.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF3B82F6),
-                unfocusedBorderColor = Color.Gray
+                focusedBorderColor = Color(0xFF2563EB),
+                unfocusedBorderColor = Color(0xFFCECECE),
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White
             )
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // Password Field
+        Text(
+            text = "Pass:",
+            color = Color(0xFF7A7A7A),
+            fontWeight = FontWeight.Normal,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+        )
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("Password") },
+            placeholder = { Text("Enter your pass", color = Color(0xFF7A7A7A)) },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(28.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF3B82F6),
-                unfocusedBorderColor = Color.Gray
+                focusedBorderColor = Color(0xFF2563EB),
+                unfocusedBorderColor = Color(0xFFCECECE),
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White
             )
         )
 
@@ -145,7 +135,7 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
 
         // Password Requirements
         Text(
-            text = "• Password must be over 8 characters\n• Must include capitals, numbers, and special characters",
+            text = "• Pass must be 6 or more characters",
             fontSize = 12.sp,
             color = Color.Black,
             modifier = Modifier.align(Alignment.Start)
@@ -158,11 +148,11 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
             onClick = {
                 authViewModel.registration(email, password)
             },
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6)),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(28.dp),
             enabled = authState.value !== AuthState.Loading
         ) {
             Text(text = "Register", fontSize = 18.sp, color = Color.White)
@@ -177,10 +167,8 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
             Text(
                 text = "Already have an account? Log In",
                 fontSize = 14.sp,
-                color = Color(0xFF3B82F6)
+                color = Color(0xFF2563EB)
             )
         }
     }
 }
-
-
