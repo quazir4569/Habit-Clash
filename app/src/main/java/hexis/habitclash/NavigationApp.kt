@@ -25,5 +25,10 @@ fun NavigationApp(modifier: Modifier = Modifier, authViewModel: AuthViewModel){
             DashboardScreen(navController, authViewModel)
         }
 
+        composable("Add_Habit") {
+            AddHabitScreen(navController = navController)
+        }
+
+
     } )
 }

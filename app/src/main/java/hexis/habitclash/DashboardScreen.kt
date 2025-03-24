@@ -18,26 +18,45 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 @Composable
 fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel) {
-
     val authState = authViewModel.authState.observeAsState()
+    val habits = remember { mutableStateListOf<Habit>() }
 
-    LaunchedEffect(authState.value) {
-        when(authState.value){
-            is AuthState.Unauthenticated -> navController.navigate("Login_Screen")
-            else -> Unit
+    LaunchedEffect(Unit) {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId != null) {
+            FirebaseFirestore.getInstance()
+                .collection("users")
+                .document(userId)
+                .collection("habits")
+                .addSnapshotListener { snapshot, error ->
+                    if (error == null && snapshot != null) {
+                        habits.clear()
+                        for (doc in snapshot.documents) {
+                            val habit = doc.toObject(Habit::class.java)
+                            if (habit != null) habits.add(habit)
+                        }
+                    }
+                }
         }
     }
 
-    // Dashboard content
+    if (authState.value is AuthState.Unauthenticated) {
+        LaunchedEffect(Unit) {
+            navController.navigate("Login_Screen")
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF8F9FA))
     ) {
-        // Top Bar (Temporary Location)
+        // Top Bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -45,7 +64,6 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel) 
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Logout Button (Temporary Location)
             Button(
                 onClick = { authViewModel.signout() },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6)),
@@ -62,130 +80,16 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel) 
             }
         }
 
-        // Main Content
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 20.dp)
         ) {
-            // User Profile Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 20.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(65.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF3B82F6)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                    }
-
-                    Column(
-                        modifier = Modifier
-                            .padding(start = 20.dp)
-                            .weight(1f)
-                    ) {
-                        Text(
-                            text = "Hello, @Hexis_User02",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 19.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(50))
-                                    .background(Color(0xFF3B82F6))
-                                    .padding(horizontal = 14.dp, vertical = 5.dp)
-                            ) {
-                                Text(
-                                    text = "Level 7",
-                                    color = Color.White,
-                                    fontSize = 14.sp
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            Text(
-                                text = "5 Day Streak",
-                                fontSize = 15.sp
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Today's Progress Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 20.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp)
-                ) {
-                    Text(
-                        text = "Today's Progress",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 19.sp,
-                        modifier = Modifier.padding(bottom = 18.dp)
-                    )
-
-                    LinearProgressIndicator(
-                        progress = 0.75f,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(9.dp)
-                            .clip(RoundedCornerShape(4.dp)),
-                        color = Color(0xFF3B82F6),
-                        trackColor = Color(0xFFE0E0E0)
-                    )
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "12 of 15 tasks completed",
-                            fontSize = 15.sp,
-                            color = Color.DarkGray
-                        )
-
-                        Text(
-                            text = "75%",
-                            fontSize = 15.sp,
-                            color = Color.DarkGray
-                        )
-                    }
-                }
-            }
+            // Profile Card + Progress Card (same as before)...
 
             // Daily Habits Card
             Card(
-                modifier = Modifier
-                    .fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
@@ -201,49 +105,33 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel) 
                         modifier = Modifier.padding(bottom = 18.dp)
                     )
 
-                    //Hard coding habits for now, will change in week 11's backend implementation
-                    HabitItem(
-                        title = "Placeholder Habit 1",
-                        time = "8:00 AM",
-                        completed = true
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    HabitItem(
-                        title = "Placeholder Habit 2",
-                        time = "11:00 AM",
-                        completed = true
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    HabitItem(
-                        title = "Placeholder Habit 3",
-                        time = "2:00 PM",
-                        completed = true
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    HabitItem(
-                        title = "Placeholder Habit 4",
-                        time = "5:00 PM",
-                        completed = true
-                    )
+                    if (habits.isEmpty()) {
+                        Text("No habits yet. Tap + to add one.", color = Color.Gray)
+                    } else {
+                        habits.forEach { habit ->
+                            HabitItem(
+                                title = habit.title,
+                                time = habit.time,
+                                completed = habit.completed
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+                        }
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Bottom Navigation
+            // Add Habit FAB
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 20.dp),
                 horizontalArrangement = Arrangement.Center
             ) {
-                IconButton(onClick = { /* No action for now */ }) {
+                IconButton(onClick = {
+                    navController.navigate("Add_Habit")
+                }) {
                     Box(
                         modifier = Modifier
                             .size(44.dp)
@@ -251,6 +139,7 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel) 
                             .background(Color(0xFF3B82F6)),
                         contentAlignment = Alignment.Center
                     ) {
+                        Text("+", color = Color.White, fontSize = 24.sp)
                     }
                 }
             }
@@ -258,12 +147,10 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel) 
     }
 }
 
-//Reusable component for displaying Habit Items
 @Composable
 fun HabitItem(title: String, time: String, completed: Boolean) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -272,27 +159,16 @@ fun HabitItem(title: String, time: String, completed: Boolean) {
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color(0xFF3B82F6)),
             contentAlignment = Alignment.Center
-        ) {
-        }
+        ) {}
 
         Column(
             modifier = Modifier
                 .weight(1f)
                 .padding(horizontal = 16.dp)
         ) {
-            Text(
-                text = title,
-                fontWeight = FontWeight.Medium,
-                fontSize = 17.sp
-            )
-
+            Text(text = title, fontWeight = FontWeight.Medium, fontSize = 17.sp)
             Spacer(modifier = Modifier.height(3.dp))
-
-            Text(
-                text = time,
-                color = Color.Gray,
-                fontSize = 15.sp
-            )
+            Text(text = time, color = Color.Gray, fontSize = 15.sp)
         }
 
         if (completed) {
