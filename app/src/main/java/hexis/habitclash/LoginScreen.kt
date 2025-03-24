@@ -28,10 +28,13 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
     val context = LocalContext.current
 
     LaunchedEffect(authState.value) {
-        when(authState.value){
+        when (authState.value) {
             is AuthState.Authenticated -> navController.navigate("Dashboard_Screen")
-            is AuthState.Error -> Toast.makeText(context,
-                (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
+            is AuthState.Error -> Toast.makeText(
+                context,
+                (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT
+            ).show()
+
             else -> Unit
         }
     }
@@ -39,15 +42,14 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F9FA))
+            .background(Color(0xFFF8FAFC))
             .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Spacer(modifier = Modifier.height(40.dp))
-
         // App Title
         Text(
-            text = "Habit Clash",
+            text = "Login your Account",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = Color.Black
@@ -55,32 +57,54 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
 
         Spacer(modifier = Modifier.height(30.dp))
 
-        // Email Input Field
+        // Email Field
+        Text(
+            text = "Email:",
+            color = Color(0xFF7A7A7A),
+            fontWeight = FontWeight.Normal,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+        )
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("Email") },
+            placeholder = { Text("Enter your email", color = Color(0xFF7A7A7A)) },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Email),
+            shape = RoundedCornerShape(28.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF3B82F6),
-                unfocusedBorderColor = Color.Gray
+                focusedBorderColor = Color(0xFF2563EB),
+                unfocusedBorderColor = Color(0xFFCECECE),
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White
             )
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Password Input Field
+        // Password Field
+        Text(
+            text = "Pass:",
+            color = Color(0xFF7A7A7A),
+            fontWeight = FontWeight.Normal,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+        )
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("Pass") },
+            placeholder = { Text("Enter your pass", color = Color(0xFF7A7A7A)) },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
+            shape = RoundedCornerShape(28.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF3B82F6),
-                unfocusedBorderColor = Color.Gray
+                focusedBorderColor = Color(0xFF2563EB),
+                unfocusedBorderColor = Color(0xFFCECECE),
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White
             )
         )
 
@@ -90,7 +114,7 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
         Text(
             text = "Forgot Pass?",
             fontSize = 14.sp,
-            color = Color.Gray,
+            color = Color(0xFF7A7A7A),
             modifier = Modifier.align(Alignment.End)
         )
 
@@ -101,19 +125,17 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
             onClick = {
                 authViewModel.login(email, password)
             },
-
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6)),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
-            shape = RoundedCornerShape(12.dp),
-
+            shape = RoundedCornerShape(28.dp),
             enabled = authState.value !== AuthState.Loading
         ) {
             Text(text = "Log In", fontSize = 18.sp, color = Color.White)
         }
 
-        Spacer(modifier = Modifier.height(30.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         // Register Button
         TextButton(onClick = {
@@ -123,10 +145,8 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
                 text = "Register",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF3B82F6)
+                color = Color(0xFF2563EB)
             )
         }
     }
 }
-
-
