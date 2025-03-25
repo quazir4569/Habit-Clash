@@ -17,10 +17,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val authViewModel : AuthViewModel by viewModels()
+        val themeViewModel : ThemeViewModel by viewModels()
+
         setContent {
-            HabitClashTheme {
+            HabitClashTheme(darkTheme = themeViewModel.isDarkMode) {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    NavigationApp(modifier = Modifier.padding(innerPadding), authViewModel = authViewModel)
+                    NavigationApp(modifier = Modifier.padding(innerPadding), authViewModel = authViewModel, themeViewModel = themeViewModel)
                 }
             }
         }
