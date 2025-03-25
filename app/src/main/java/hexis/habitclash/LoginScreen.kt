@@ -18,14 +18,24 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import hexis.habitclash.ui.theme.*
 
 @Composable
-fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
+fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, themeViewModel: ThemeViewModel) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
     val authState = authViewModel.authState.observeAsState()
     val context = LocalContext.current
+    val isDarkMode = themeViewModel.isDarkMode
+
+    // Colors based on theme
+    val backgroundColor = if (isDarkMode) DarkBackground else LightBackground
+    val textColor = if (isDarkMode) DarkText else LightText
+    val secondaryTextColor = if (isDarkMode) DarkSecondaryText else LightSecondaryText
+    val fieldContainerColor = if (isDarkMode) DarkFieldContainer else LightFieldContainer
+    val fieldBorderColor = if (isDarkMode) DarkFieldBorder else LightFieldBorder
+    val accentColor = PrimaryBlue
 
     LaunchedEffect(authState.value) {
         when (authState.value) {
@@ -42,7 +52,7 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8FAFC))
+            .background(backgroundColor)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -52,7 +62,7 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
             text = "Login your Account",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.Black
+            color = textColor
         )
 
         Spacer(modifier = Modifier.height(30.dp))
@@ -60,7 +70,7 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
         // Email Field
         Text(
             text = "Email:",
-            color = Color(0xFF7A7A7A),
+            color = secondaryTextColor,
             fontWeight = FontWeight.Normal,
             modifier = Modifier
                 .fillMaxWidth()
@@ -69,15 +79,17 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            placeholder = { Text("Enter your email", color = Color(0xFF7A7A7A)) },
+            placeholder = { Text("Enter your email", color = secondaryTextColor) },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Email),
             shape = RoundedCornerShape(28.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF2563EB),
-                unfocusedBorderColor = Color(0xFFCECECE),
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White
+                focusedBorderColor = accentColor,
+                unfocusedBorderColor = fieldBorderColor,
+                focusedContainerColor = fieldContainerColor,
+                unfocusedContainerColor = fieldContainerColor,
+                focusedTextColor = textColor,
+                unfocusedTextColor = textColor
             )
         )
 
@@ -86,7 +98,7 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
         // Password Field
         Text(
             text = "Pass:",
-            color = Color(0xFF7A7A7A),
+            color = secondaryTextColor,
             fontWeight = FontWeight.Normal,
             modifier = Modifier
                 .fillMaxWidth()
@@ -95,16 +107,18 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            placeholder = { Text("Enter your pass", color = Color(0xFF7A7A7A)) },
+            placeholder = { Text("Enter your pass", color = secondaryTextColor) },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
             shape = RoundedCornerShape(28.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF2563EB),
-                unfocusedBorderColor = Color(0xFFCECECE),
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White
+                focusedBorderColor = accentColor,
+                unfocusedBorderColor = fieldBorderColor,
+                focusedContainerColor = fieldContainerColor,
+                unfocusedContainerColor = fieldContainerColor,
+                focusedTextColor = textColor,
+                unfocusedTextColor = textColor
             )
         )
 
@@ -114,7 +128,7 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
         Text(
             text = "Forgot Pass?",
             fontSize = 14.sp,
-            color = Color(0xFF7A7A7A),
+            color = secondaryTextColor,
             modifier = Modifier.align(Alignment.End)
         )
 
@@ -125,7 +139,7 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
             onClick = {
                 authViewModel.login(email, password)
             },
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+            colors = ButtonDefaults.buttonColors(containerColor = accentColor),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
@@ -145,7 +159,21 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
                 text = "Register",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF2563EB)
+                color = accentColor
+            )
+        }
+
+        // Add theme toggle
+        Spacer(modifier = Modifier.height(40.dp))
+
+        Button(
+            onClick = { themeViewModel.toggleTheme() },
+            colors = ButtonDefaults.buttonColors(containerColor = accentColor),
+            modifier = Modifier.width(200.dp)
+        ) {
+            Text(
+                text = if (isDarkMode) "Switch to Light Mode" else "Switch to Dark Mode",
+                color = Color.White
             )
         }
     }
