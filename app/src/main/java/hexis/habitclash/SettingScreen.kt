@@ -17,11 +17,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import hexis.habitclash.ui.theme.getAppThemeColors
 
 /**
  * Settings screen for app preferences and user account.
- * Shows user email, theme toggle, and logout button.
+ * Shows user username, email, theme toggle, and logout button.
  */
 @Composable
 fun SettingsScreen(
@@ -34,6 +35,24 @@ fun SettingsScreen(
     val userEmail = currentUser?.email ?: "Not logged in"
     val authState = authViewModel.authState.observeAsState()
     val colors = getAppThemeColors(isDarkMode)
+
+    // State for username
+    var username by remember { mutableStateOf("") }
+
+    // Fetch username from Firestore
+    LaunchedEffect(currentUser) {
+        if (currentUser != null) {
+            FirebaseFirestore.getInstance()
+                .collection("users")
+                .document(currentUser.uid)
+                .get()
+                .addOnSuccessListener { document ->
+                    if (document != null && document.exists()) {
+                        username = document.getString("username") ?: "User"
+                    }
+                }
+        }
+    }
 
     // Redirect to login if not authenticated
     LaunchedEffect(authState.value) {
@@ -85,24 +104,35 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // User email card
+            // User info card with username and email
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(65.dp),
+                    .height(100.dp),
                 shape = RoundedCornerShape(28.dp),
                 colors = CardDefaults.cardColors(containerColor = colors.cardColor)
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.Center
                 ) {
+                    // Username
+                    Text(
+                        text = username,
+                        fontSize = 18.sp,
+                        color = colors.textColor,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Email
                     Text(
                         text = userEmail,
-                        fontSize = 16.sp,
-                        color = colors.textColor,
+                        fontSize = 14.sp,
+                        color = colors.secondaryTextColor,
                         fontWeight = FontWeight.Normal
                     )
                 }
