@@ -6,7 +6,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -20,12 +19,21 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import hexis.habitclash.ui.theme.AppThemeColors
+import hexis.habitclash.ui.theme.getAppThemeColors
 
+/**
+ * Main dashboard screen showing user's habits.
+ * Loads habits from Firebase and displays them in a list.
+ */
 @Composable
-fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel) {
+fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, themeViewModel: ThemeViewModel) {
     val authState = authViewModel.authState.observeAsState()
     val habits = remember { mutableStateListOf<Habit>() }
+    val isDarkMode = themeViewModel.isDarkMode
+    val colors = getAppThemeColors(isDarkMode)
 
+    // Load habits from Firebase when screen opens
     LaunchedEffect(Unit) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId != null) {
@@ -45,6 +53,7 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel) 
         }
     }
 
+    // Redirect to login if not authenticated
     if (authState.value is AuthState.Unauthenticated) {
         LaunchedEffect(Unit) {
             navController.navigate("Login_Screen")
@@ -54,44 +63,20 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel) 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F9FA))
+            .background(colors.backgroundColor)
     ) {
-        // Top Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Button(
-                onClick = { authViewModel.signout() },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6)),
-                modifier = Modifier.padding(4.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ExitToApp,
-                    contentDescription = "Sign Out",
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Log Out", color = Color.White)
-            }
-        }
+        Spacer(modifier = Modifier.height(52.dp))
 
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp)
+                .weight(1f)
+                .padding(horizontal = 24.dp)
         ) {
-            // Profile Card + Progress Card (same as before)...
-
-            // Daily Habits Card
+            // Habits card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = colors.cardColor)
             ) {
                 Column(
                     modifier = Modifier
@@ -102,88 +87,95 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel) 
                         text = "Daily Habits",
                         fontWeight = FontWeight.Bold,
                         fontSize = 19.sp,
-                        modifier = Modifier.padding(bottom = 18.dp)
+                        color = colors.textColor,
+                        modifier = Modifier.padding(bottom = 16.dp)
                     )
 
+                    // Show message if no habits, otherwise show habit list
                     if (habits.isEmpty()) {
-                        Text("No habits yet. Tap + to add one.", color = Color.Gray)
+                        Text(
+                            "No habits yet. Use the Add Habit button below to create one.",
+                            color = colors.secondaryTextColor
+                        )
                     } else {
                         habits.forEach { habit ->
                             HabitItem(
                                 title = habit.title,
                                 time = habit.time,
-                                completed = habit.completed
+                                completed = habit.completed,
+                                isDarkMode = isDarkMode,
+                                colors = colors
                             )
-                            Spacer(modifier = Modifier.height(24.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
                         }
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Add Habit FAB
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 20.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                IconButton(onClick = {
-                    navController.navigate("Add_Habit")
-                }) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF3B82F6)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("+", color = Color.White, fontSize = 24.sp)
-                    }
-                }
-            }
         }
+
+        BottomNavigationBar(navController, isDarkMode)
     }
 }
 
+/**
+ * Individual habit item in the list.
+ * Shows habit name, time, and completion status.
+ */
 @Composable
-fun HabitItem(title: String, time: String, completed: Boolean) {
+fun HabitItem(
+    title: String,
+    time: String,
+    completed: Boolean,
+    isDarkMode: Boolean,
+    colors: AppThemeColors
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Habit icon
         Box(
             modifier = Modifier
                 .size(55.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF3B82F6)),
+                .clip(RoundedCornerShape(28.dp))
+                .background(colors.accentColor),
             contentAlignment = Alignment.Center
         ) {}
 
+        // Habit details
         Column(
             modifier = Modifier
                 .weight(1f)
                 .padding(horizontal = 16.dp)
         ) {
-            Text(text = title, fontWeight = FontWeight.Medium, fontSize = 17.sp)
-            Spacer(modifier = Modifier.height(3.dp))
-            Text(text = time, color = Color.Gray, fontSize = 15.sp)
+            Text(
+                text = title,
+                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp,
+                color = colors.textColor
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = time,
+                color = colors.secondaryTextColor,
+                fontSize = 14.sp
+            )
         }
 
+        // Completed indicator
         if (completed) {
             Box(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF3B82F6)),
+                    .background(colors.accentColor),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = "Completed",
                     tint = Color.White,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }

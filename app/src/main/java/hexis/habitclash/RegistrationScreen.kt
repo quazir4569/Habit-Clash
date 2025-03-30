@@ -18,8 +18,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import hexis.habitclash.ui.theme.*
+import hexis.habitclash.ui.theme.getAppThemeColors
 
+/**
+ * Registration screen for creating new user accounts.
+ * Collects name, email, and password.
+ */
 @Composable
 fun RegistrationScreen(navController: NavController, authViewModel: AuthViewModel, themeViewModel: ThemeViewModel) {
     var fullName by remember { mutableStateOf("") }
@@ -29,15 +33,9 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
     val authState = authViewModel.authState.observeAsState()
     val context = LocalContext.current
     val isDarkMode = themeViewModel.isDarkMode
+    val colors = getAppThemeColors(isDarkMode)
 
-    // Colors based on theme
-    val backgroundColor = if (isDarkMode) DarkBackground else LightBackground
-    val textColor = if (isDarkMode) DarkText else LightText
-    val secondaryTextColor = if (isDarkMode) DarkSecondaryText else LightSecondaryText
-    val fieldContainerColor = if (isDarkMode) DarkFieldContainer else LightFieldContainer
-    val fieldBorderColor = if (isDarkMode) DarkFieldBorder else LightFieldBorder
-    val accentColor = PrimaryBlue
-
+    // Handle authentication state changes
     LaunchedEffect(authState.value) {
         when(authState.value){
             is AuthState.Authenticated -> navController.navigate("Dashboard_Screen")
@@ -50,25 +48,24 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundColor)
+            .background(colors.backgroundColor)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // App Title
         Text(
             text = "Create an Account",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            color = textColor
+            color = colors.textColor
         )
 
         Spacer(modifier = Modifier.height(30.dp))
 
-        // Full Name Field
+        // Full name field
         Text(
             text = "Full Name:",
-            color = secondaryTextColor,
+            color = colors.secondaryTextColor,
             fontWeight = FontWeight.Normal,
             modifier = Modifier
                 .fillMaxWidth()
@@ -77,25 +74,25 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
         OutlinedTextField(
             value = fullName,
             onValueChange = { fullName = it },
-            placeholder = { Text("Enter your full name", color = secondaryTextColor) },
+            placeholder = { Text("Enter your full name", color = colors.secondaryTextColor) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(28.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = accentColor,
-                unfocusedBorderColor = fieldBorderColor,
-                focusedContainerColor = fieldContainerColor,
-                unfocusedContainerColor = fieldContainerColor,
-                focusedTextColor = textColor,
-                unfocusedTextColor = textColor
+                focusedBorderColor = colors.accentColor,
+                unfocusedBorderColor = colors.fieldBorderColor,
+                focusedContainerColor = colors.fieldContainerColor,
+                unfocusedContainerColor = colors.fieldContainerColor,
+                focusedTextColor = colors.textColor,
+                unfocusedTextColor = colors.textColor
             )
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Email Field
+        // Email field
         Text(
             text = "Email:",
-            color = secondaryTextColor,
+            color = colors.secondaryTextColor,
             fontWeight = FontWeight.Normal,
             modifier = Modifier
                 .fillMaxWidth()
@@ -104,26 +101,26 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            placeholder = { Text("Enter your email", color = secondaryTextColor) },
+            placeholder = { Text("Enter your email", color = colors.secondaryTextColor) },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Email),
             shape = RoundedCornerShape(28.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = accentColor,
-                unfocusedBorderColor = fieldBorderColor,
-                focusedContainerColor = fieldContainerColor,
-                unfocusedContainerColor = fieldContainerColor,
-                focusedTextColor = textColor,
-                unfocusedTextColor = textColor
+                focusedBorderColor = colors.accentColor,
+                unfocusedBorderColor = colors.fieldBorderColor,
+                focusedContainerColor = colors.fieldContainerColor,
+                unfocusedContainerColor = colors.fieldContainerColor,
+                focusedTextColor = colors.textColor,
+                unfocusedTextColor = colors.textColor
             )
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Password Field
+        // Password field
         Text(
             text = "Pass:",
-            color = secondaryTextColor,
+            color = colors.secondaryTextColor,
             fontWeight = FontWeight.Normal,
             modifier = Modifier
                 .fillMaxWidth()
@@ -132,39 +129,38 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            placeholder = { Text("Enter your pass", color = secondaryTextColor) },
+            placeholder = { Text("Enter your pass", color = colors.secondaryTextColor) },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
             shape = RoundedCornerShape(28.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = accentColor,
-                unfocusedBorderColor = fieldBorderColor,
-                focusedContainerColor = fieldContainerColor,
-                unfocusedContainerColor = fieldContainerColor,
-                focusedTextColor = textColor,
-                unfocusedTextColor = textColor
+                focusedBorderColor = colors.accentColor,
+                unfocusedBorderColor = colors.fieldBorderColor,
+                focusedContainerColor = colors.fieldContainerColor,
+                unfocusedContainerColor = colors.fieldContainerColor,
+                focusedTextColor = colors.textColor,
+                unfocusedTextColor = colors.textColor
             )
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Password Requirements
         Text(
             text = "• Pass must be 6 or more characters",
             fontSize = 12.sp,
-            color = textColor,
+            color = colors.textColor,
             modifier = Modifier.align(Alignment.Start)
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Register Button with Basic Validation
+        // Register button
         Button(
             onClick = {
                 authViewModel.registration(email, password)
             },
-            colors = ButtonDefaults.buttonColors(containerColor = accentColor),
+            colors = ButtonDefaults.buttonColors(containerColor = colors.accentColor),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
@@ -174,30 +170,32 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
             Text(text = "Register", fontSize = 18.sp, color = Color.White)
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Back to Login Link
+        // Login link
         TextButton(onClick = {
             navController.navigate("Login_Screen")
         }) {
             Text(
                 text = "Already have an account? Log In",
                 fontSize = 14.sp,
-                color = accentColor
+                color = colors.accentColor
             )
         }
 
-        // Add theme toggle
         Spacer(modifier = Modifier.height(40.dp))
 
+        // Theme switch button
         Button(
             onClick = { themeViewModel.toggleTheme() },
-            colors = ButtonDefaults.buttonColors(containerColor = accentColor),
-            modifier = Modifier.width(200.dp)
+            colors = ButtonDefaults.buttonColors(containerColor = colors.accentColor),
+            modifier = Modifier.width(200.dp),
+            shape = RoundedCornerShape(28.dp)
         ) {
             Text(
                 text = if (isDarkMode) "Switch to Light Mode" else "Switch to Dark Mode",
-                color = Color.White
+                color = Color.White,
+                fontSize = 14.sp
             )
         }
     }

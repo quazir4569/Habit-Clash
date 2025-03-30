@@ -13,13 +13,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import hexis.habitclash.ui.theme.*
+import hexis.habitclash.ui.theme.getAppThemeColors
 
+/**
+ * Login screen for user authentication.
+ * Allows users to log in with email and password.
+ */
 @Composable
 fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, themeViewModel: ThemeViewModel) {
     var email by remember { mutableStateOf("") }
@@ -28,15 +32,9 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, them
     val authState = authViewModel.authState.observeAsState()
     val context = LocalContext.current
     val isDarkMode = themeViewModel.isDarkMode
+    val colors = getAppThemeColors(isDarkMode)
 
-    // Colors based on theme
-    val backgroundColor = if (isDarkMode) DarkBackground else LightBackground
-    val textColor = if (isDarkMode) DarkText else LightText
-    val secondaryTextColor = if (isDarkMode) DarkSecondaryText else LightSecondaryText
-    val fieldContainerColor = if (isDarkMode) DarkFieldContainer else LightFieldContainer
-    val fieldBorderColor = if (isDarkMode) DarkFieldBorder else LightFieldBorder
-    val accentColor = PrimaryBlue
-
+    // Handle authentication state changes
     LaunchedEffect(authState.value) {
         when (authState.value) {
             is AuthState.Authenticated -> navController.navigate("Dashboard_Screen")
@@ -44,7 +42,6 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, them
                 context,
                 (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT
             ).show()
-
             else -> Unit
         }
     }
@@ -52,25 +49,24 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, them
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundColor)
+            .background(colors.backgroundColor)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // App Title
         Text(
             text = "Login your Account",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            color = textColor
+            color = colors.textColor
         )
 
         Spacer(modifier = Modifier.height(30.dp))
 
-        // Email Field
+        // Email field
         Text(
             text = "Email:",
-            color = secondaryTextColor,
+            color = colors.secondaryTextColor,
             fontWeight = FontWeight.Normal,
             modifier = Modifier
                 .fillMaxWidth()
@@ -79,26 +75,26 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, them
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            placeholder = { Text("Enter your email", color = secondaryTextColor) },
+            placeholder = { Text("Enter your email", color = colors.secondaryTextColor) },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Email),
             shape = RoundedCornerShape(28.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = accentColor,
-                unfocusedBorderColor = fieldBorderColor,
-                focusedContainerColor = fieldContainerColor,
-                unfocusedContainerColor = fieldContainerColor,
-                focusedTextColor = textColor,
-                unfocusedTextColor = textColor
+                focusedBorderColor = colors.accentColor,
+                unfocusedBorderColor = colors.fieldBorderColor,
+                focusedContainerColor = colors.fieldContainerColor,
+                unfocusedContainerColor = colors.fieldContainerColor,
+                focusedTextColor = colors.textColor,
+                unfocusedTextColor = colors.textColor
             )
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Password Field
+        // Password field
         Text(
             text = "Pass:",
-            color = secondaryTextColor,
+            color = colors.secondaryTextColor,
             fontWeight = FontWeight.Normal,
             modifier = Modifier
                 .fillMaxWidth()
@@ -107,39 +103,38 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, them
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            placeholder = { Text("Enter your pass", color = secondaryTextColor) },
+            placeholder = { Text("Enter your pass", color = colors.secondaryTextColor) },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
             shape = RoundedCornerShape(28.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = accentColor,
-                unfocusedBorderColor = fieldBorderColor,
-                focusedContainerColor = fieldContainerColor,
-                unfocusedContainerColor = fieldContainerColor,
-                focusedTextColor = textColor,
-                unfocusedTextColor = textColor
+                focusedBorderColor = colors.accentColor,
+                unfocusedBorderColor = colors.fieldBorderColor,
+                focusedContainerColor = colors.fieldContainerColor,
+                unfocusedContainerColor = colors.fieldContainerColor,
+                focusedTextColor = colors.textColor,
+                unfocusedTextColor = colors.textColor
             )
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Forgot Password
         Text(
             text = "Forgot Pass?",
             fontSize = 14.sp,
-            color = secondaryTextColor,
+            color = colors.secondaryTextColor,
             modifier = Modifier.align(Alignment.End)
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Login Button
+        // Login button
         Button(
             onClick = {
                 authViewModel.login(email, password)
             },
-            colors = ButtonDefaults.buttonColors(containerColor = accentColor),
+            colors = ButtonDefaults.buttonColors(containerColor = colors.accentColor),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
@@ -149,9 +144,9 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, them
             Text(text = "Log In", fontSize = 18.sp, color = Color.White)
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Register Button
+        // Register link
         TextButton(onClick = {
             navController.navigate("Registration_Screen")
         }) {
@@ -159,21 +154,23 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, them
                 text = "Register",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = accentColor
+                color = colors.accentColor
             )
         }
 
-        // Add theme toggle
         Spacer(modifier = Modifier.height(40.dp))
 
+        // Theme switch button
         Button(
             onClick = { themeViewModel.toggleTheme() },
-            colors = ButtonDefaults.buttonColors(containerColor = accentColor),
-            modifier = Modifier.width(200.dp)
+            colors = ButtonDefaults.buttonColors(containerColor = colors.accentColor),
+            modifier = Modifier.width(200.dp),
+            shape = RoundedCornerShape(28.dp)
         ) {
             Text(
                 text = if (isDarkMode) "Switch to Light Mode" else "Switch to Dark Mode",
-                color = Color.White
+                color = Color.White,
+                fontSize = 14.sp
             )
         }
     }
