@@ -110,7 +110,8 @@ fun SettingsScreen(
                     .fillMaxWidth()
                     .height(100.dp),
                 shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(containerColor = colors.cardColor)
+                colors = CardDefaults.cardColors(containerColor = colors.cardColor),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 Column(
                     modifier = Modifier
@@ -146,7 +147,8 @@ fun SettingsScreen(
                     .fillMaxWidth()
                     .height(65.dp),
                 shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(containerColor = colors.cardColor)
+                colors = CardDefaults.cardColors(containerColor = colors.cardColor),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 Row(
                     modifier = Modifier

@@ -67,10 +67,9 @@ class AuthViewModel : ViewModel() {
         auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    // First update auth state to authenticated right away
                     _authState.value = AuthState.Authenticated
 
-                    // Then save username as a background operation
+                    // Save username as a background operation
                     val userId = auth.currentUser?.uid
                     if (userId != null) {
                         val userDoc = FirebaseFirestore.getInstance().collection("users").document(userId)
