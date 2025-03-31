@@ -105,7 +105,7 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
         BottomNavigationBar(navController, isDarkMode)
     }
 }
-
+//Habit Portion
 @Composable
 fun HabitItem(
     habit: Habit,

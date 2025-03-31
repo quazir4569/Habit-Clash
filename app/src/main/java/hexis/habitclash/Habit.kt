@@ -10,7 +10,7 @@ data class Habit(
     val userId: String = "",                  // ID of the user who created the habit
     val title: String = "",                   // Name of the habit
     val description: String = "",             // Details about the habit
-    val category: String = "",                // E.g., Health, Study, etc.
+    val category: String = "",                // E.g., Health, Study, etc, considering making a drop down
     val frequency: String = "daily",          // Daily, weekly, etc.
     val goalCount: Int = 1,                   // Target number per frequency
 

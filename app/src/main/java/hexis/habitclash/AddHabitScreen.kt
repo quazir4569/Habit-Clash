@@ -116,7 +116,7 @@ fun AddHabitScreen(
             Text("Add Habit", color = Color.White, fontSize = 18.sp)
         }
 
-        Spacer(modifier = Modifier.height(80.dp)) // give room below the button
+        Spacer(modifier = Modifier.height(80.dp)) // this is to give room below the button
     }
 
     BottomNavigationBar(navController, isDarkMode)
