@@ -157,21 +157,5 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, them
                 color = colors.accentColor
             )
         }
-
-        Spacer(modifier = Modifier.height(40.dp))
-
-        // Theme switch button
-        Button(
-            onClick = { themeViewModel.toggleTheme() },
-            colors = ButtonDefaults.buttonColors(containerColor = colors.accentColor),
-            modifier = Modifier.width(200.dp),
-            shape = RoundedCornerShape(28.dp)
-        ) {
-            Text(
-                text = if (isDarkMode) "Switch to Light Mode" else "Switch to Dark Mode",
-                color = Color.White,
-                fontSize = 14.sp
-            )
-        }
     }
 }

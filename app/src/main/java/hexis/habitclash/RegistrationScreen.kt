@@ -22,11 +22,11 @@ import hexis.habitclash.ui.theme.getAppThemeColors
 
 /**
  * Registration screen for creating new user accounts.
- * Collects name, email, and password.
+ * Collects username, email, and password.
  */
 @Composable
 fun RegistrationScreen(navController: NavController, authViewModel: AuthViewModel, themeViewModel: ThemeViewModel) {
-    var fullName by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
@@ -62,9 +62,9 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
 
         Spacer(modifier = Modifier.height(30.dp))
 
-        // Full name field
+        // Username field
         Text(
-            text = "Full Name:",
+            text = "Username:",
             color = colors.secondaryTextColor,
             fontWeight = FontWeight.Normal,
             modifier = Modifier
@@ -72,9 +72,9 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
                 .padding(bottom = 8.dp)
         )
         OutlinedTextField(
-            value = fullName,
-            onValueChange = { fullName = it },
-            placeholder = { Text("Enter your full name", color = colors.secondaryTextColor) },
+            value = username,
+            onValueChange = { username = it },
+            placeholder = { Text("Enter your username", color = colors.secondaryTextColor) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(28.dp),
             colors = OutlinedTextFieldDefaults.colors(
@@ -158,7 +158,7 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
         // Register button
         Button(
             onClick = {
-                authViewModel.registration(email, password)
+                authViewModel.registration(email, password, username)
             },
             colors = ButtonDefaults.buttonColors(containerColor = colors.accentColor),
             modifier = Modifier
@@ -180,22 +180,6 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
                 text = "Already have an account? Log In",
                 fontSize = 14.sp,
                 color = colors.accentColor
-            )
-        }
-
-        Spacer(modifier = Modifier.height(40.dp))
-
-        // Theme switch button
-        Button(
-            onClick = { themeViewModel.toggleTheme() },
-            colors = ButtonDefaults.buttonColors(containerColor = colors.accentColor),
-            modifier = Modifier.width(200.dp),
-            shape = RoundedCornerShape(28.dp)
-        ) {
-            Text(
-                text = if (isDarkMode) "Switch to Light Mode" else "Switch to Dark Mode",
-                color = Color.White,
-                fontSize = 14.sp
             )
         }
     }

@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 /**
  * Handles user login, signup, and tracks auth status.
@@ -55,11 +56,11 @@ class AuthViewModel : ViewModel() {
      * Creates a new user account.
      * Updates auth state based on result.
      */
-    fun registration(email: String, password: String) {
+    fun registration(email: String, password: String, username: String) {
         _authState.value = AuthState.Loading
 
-        if (email.isEmpty() || password.isEmpty()) {
-            _authState.value = AuthState.Error("Email or password must be filled")
+        if (email.isEmpty() || password.isEmpty() || username.isEmpty()) {
+            _authState.value = AuthState.Error("All fields must be filled")
             return
         }
 
@@ -67,8 +68,19 @@ class AuthViewModel : ViewModel() {
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     _authState.value = AuthState.Authenticated
+
+                    // Save username as a background operation
+                    val userId = auth.currentUser?.uid
+                    if (userId != null) {
+                        val userDoc = FirebaseFirestore.getInstance().collection("users").document(userId)
+                        val userData = hashMapOf(
+                            "username" to username,
+                            "email" to email
+                        )
+                        userDoc.set(userData)
+                    }
                 } else {
-                    _authState.value = AuthState.Error(task.exception?.message ?: "Incorrect email or password")
+                    _authState.value = AuthState.Error(task.exception?.message ?: "Registration failed")
                 }
             }
     }

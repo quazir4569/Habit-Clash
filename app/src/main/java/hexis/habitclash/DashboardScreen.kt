@@ -1,11 +1,14 @@
 package hexis.habitclash
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -32,11 +35,24 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
     val habits = remember { mutableStateListOf<Habit>() }
     val isDarkMode = themeViewModel.isDarkMode
     val colors = getAppThemeColors(isDarkMode)
+    var username by remember { mutableStateOf("User") }
 
     // Load habits from Firebase when screen opens
     LaunchedEffect(Unit) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId != null) {
+            // Load username
+            FirebaseFirestore.getInstance()
+                .collection("users")
+                .document(userId)
+                .get()
+                .addOnSuccessListener { document ->
+                    if (document != null && document.exists()) {
+                        username = document.getString("username") ?: "User"
+                    }
+                }
+
+            // Load habits
             FirebaseFirestore.getInstance()
                 .collection("users")
                 .document(userId)
@@ -72,11 +88,96 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                 .weight(1f)
                 .padding(horizontal = 24.dp)
         ) {
+            // Profile card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = colors.cardColor),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(21.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Profile icon
+                    Box(
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(CircleShape)
+                            .background(colors.accentColor),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Profile",
+                            tint = Color.White,
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    // User info
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "Hello, @$username",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textColor
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // Level and streak
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Level pill
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = colors.accentColor,
+                                modifier = Modifier.height(26.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier.padding(horizontal = 10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Level 0",
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            // Streak indicator
+                            Text(
+                                text = "0 Day Streak",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = colors.textColor
+                            )
+                        }
+                    }
+                }
+            }
+
             // Habits card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = colors.cardColor)
+                colors = CardDefaults.cardColors(containerColor = colors.cardColor),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 Column(
                     modifier = Modifier
@@ -98,15 +199,19 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                             color = colors.secondaryTextColor
                         )
                     } else {
-                        habits.forEach { habit ->
+                        habits.forEachIndexed { index, habit ->
                             HabitItem(
                                 title = habit.title,
                                 time = habit.time,
                                 completed = habit.completed,
                                 isDarkMode = isDarkMode,
-                                colors = colors
+                                colors = colors,
+                                navController = navController
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
+                            // Only add spacing if it's not the last item
+                            if (index < habits.size - 1) {
+                                Spacer(modifier = Modifier.height(24.dp))
+                            }
                         }
                     }
                 }
@@ -117,67 +222,105 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
     }
 }
 
-/**
- * Individual habit item in the list.
- * Shows habit name, time, and completion status.
- */
 @Composable
 fun HabitItem(
     title: String,
     time: String,
     completed: Boolean,
     isDarkMode: Boolean,
-    colors: AppThemeColors
+    colors: AppThemeColors,
+    navController: NavController
 ) {
+    var isCompleted by remember { mutableStateOf(completed) }
+    val userId = FirebaseAuth.getInstance().currentUser?.uid
+    var habitId by remember { mutableStateOf("") }
+
+    // Find the document ID for this habit
+    LaunchedEffect(title, time) {
+        if (userId != null) {
+            FirebaseFirestore.getInstance()
+                .collection("users")
+                .document(userId)
+                .collection("habits")
+                .whereEqualTo("title", title)
+                .whereEqualTo("time", time)
+                .get()
+                .addOnSuccessListener { documents ->
+                    if (!documents.isEmpty) {
+                        habitId = documents.documents[0].id
+                    }
+                }
+        }
+    }
+
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                // Only navigate if we have the habit ID
+                if (habitId.isNotEmpty()) {
+                    navController.navigate("Edit_Habit/$habitId/$title/$time")
+                }
+            },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Habit icon
         Box(
             modifier = Modifier
-                .size(55.dp)
-                .clip(RoundedCornerShape(28.dp))
-                .background(colors.accentColor),
+                .size(28.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(if (isCompleted) colors.accentColor else Color.Transparent)
+                .border(
+                    width = 2.dp,
+                    color = colors.accentColor,
+                    shape = RoundedCornerShape(4.dp)
+                )
+                .clickable(onClick = {
+                    // Toggle completion state
+                    isCompleted = !isCompleted
+
+                    // Update in Firestore if we have the habit ID
+                    if (habitId.isNotEmpty()) {
+                        FirebaseFirestore.getInstance()
+                            .collection("users")
+                            .document(userId ?: return@clickable)
+                            .collection("habits")
+                            .document(habitId)
+                            .update("completed", isCompleted)
+                    }
+                }),
             contentAlignment = Alignment.Center
-        ) {}
-
-        // Habit details
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 16.dp)
         ) {
-            Text(
-                text = title,
-                fontWeight = FontWeight.Medium,
-                fontSize = 16.sp,
-                color = colors.textColor
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = time,
-                color = colors.secondaryTextColor,
-                fontSize = 14.sp
-            )
-        }
-
-        // Completed indicator
-        if (completed) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(colors.accentColor),
-                contentAlignment = Alignment.Center
-            ) {
+            if (isCompleted) {
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = "Completed",
                     tint = Color.White,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
+        }
+
+        Spacer(modifier = Modifier.width(24.dp))
+
+        // Habit details
+        Column(
+            modifier = Modifier
+                .weight(1f),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = title,
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                color = colors.textColor,
+                modifier = Modifier.offset(y = 1.dp)
+            )
+            Text(
+                text = time,
+                color = colors.secondaryTextColor,
+                fontSize = 12.sp,
+                modifier = Modifier.offset(y = (-1).dp)
+            )
         }
     }
 }
