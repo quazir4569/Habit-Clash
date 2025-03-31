@@ -100,7 +100,7 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(22.dp),
+                        .padding(21.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Profile icon
@@ -127,12 +127,12 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                     ) {
                         Text(
                             text = "Hello, @$username",
-                            fontSize = 17.sp,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = colors.textColor
                         )
 
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
                         // Level and streak
                         Row(
@@ -158,7 +158,7 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                                 }
                             }
 
-                            Spacer(modifier = Modifier.width(12.dp))
+                            Spacer(modifier = Modifier.width(16.dp))
 
                             // Streak indicator
                             Text(
@@ -196,19 +196,22 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                     if (habits.isEmpty()) {
                         Text(
                             "No habits yet. Use the Add Habit button below to create one.",
-                            fontSize = 14.sp,
                             color = colors.secondaryTextColor
                         )
                     } else {
-                        habits.forEach { habit ->
+                        habits.forEachIndexed { index, habit ->
                             HabitItem(
                                 title = habit.title,
                                 time = habit.time,
                                 completed = habit.completed,
                                 isDarkMode = isDarkMode,
-                                colors = colors
+                                colors = colors,
+                                navController = navController
                             )
-                            Spacer(modifier = Modifier.height(24.dp))
+                            // Only add spacing if it's not the last item
+                            if (index < habits.size - 1) {
+                                Spacer(modifier = Modifier.height(24.dp))
+                            }
                         }
                     }
                 }
@@ -219,26 +222,48 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
     }
 }
 
-/**
- * Individual habit item in the list.
- * Shows habit name, time, and completion status.
- */
 @Composable
 fun HabitItem(
     title: String,
     time: String,
     completed: Boolean,
     isDarkMode: Boolean,
-    colors: AppThemeColors
+    colors: AppThemeColors,
+    navController: NavController
 ) {
     var isCompleted by remember { mutableStateOf(completed) }
     val userId = FirebaseAuth.getInstance().currentUser?.uid
+    var habitId by remember { mutableStateOf("") }
+
+    // Find the document ID for this habit
+    LaunchedEffect(title, time) {
+        if (userId != null) {
+            FirebaseFirestore.getInstance()
+                .collection("users")
+                .document(userId)
+                .collection("habits")
+                .whereEqualTo("title", title)
+                .whereEqualTo("time", time)
+                .get()
+                .addOnSuccessListener { documents ->
+                    if (!documents.isEmpty) {
+                        habitId = documents.documents[0].id
+                    }
+                }
+        }
+    }
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                // Only navigate if we have the habit ID
+                if (habitId.isNotEmpty()) {
+                    navController.navigate("Edit_Habit/$habitId/$title/$time")
+                }
+            },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Checkbox
         Box(
             modifier = Modifier
                 .size(28.dp)
@@ -249,29 +274,20 @@ fun HabitItem(
                     color = colors.accentColor,
                     shape = RoundedCornerShape(4.dp)
                 )
-                .clickable {
+                .clickable(onClick = {
                     // Toggle completion state
                     isCompleted = !isCompleted
 
-                    // Update in Firestore if we have the user ID
-                    if (userId != null) {
-                        // First, find the document ID for this habit
+                    // Update in Firestore if we have the habit ID
+                    if (habitId.isNotEmpty()) {
                         FirebaseFirestore.getInstance()
                             .collection("users")
-                            .document(userId)
+                            .document(userId ?: return@clickable)
                             .collection("habits")
-                            .whereEqualTo("title", title)
-                            .whereEqualTo("time", time)
-                            .get()
-                            .addOnSuccessListener { documents ->
-                                if (!documents.isEmpty) {
-                                    val habitDoc = documents.documents[0]
-                                    // Update the completed field
-                                    habitDoc.reference.update("completed", isCompleted)
-                                }
-                            }
+                            .document(habitId)
+                            .update("completed", isCompleted)
                     }
-                },
+                }),
             contentAlignment = Alignment.Center
         ) {
             if (isCompleted) {
@@ -297,13 +313,13 @@ fun HabitItem(
                 fontWeight = FontWeight.Medium,
                 fontSize = 14.sp,
                 color = colors.textColor,
-                modifier = Modifier.offset(y = 2.dp)
+                modifier = Modifier.offset(y = 1.dp)
             )
             Text(
                 text = time,
                 color = colors.secondaryTextColor,
                 fontSize = 12.sp,
-                modifier = Modifier.offset(y = (-2).dp)
+                modifier = Modifier.offset(y = (-1).dp)
             )
         }
     }

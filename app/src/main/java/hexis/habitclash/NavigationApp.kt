@@ -2,9 +2,11 @@ package hexis.habitclash
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 
 /**
  * Sets up app navigation.
@@ -34,6 +36,28 @@ fun NavigationApp(modifier: Modifier = Modifier, authViewModel: AuthViewModel, t
 
         composable("Add_Habit") {
             AddHabitScreen(navController = navController, themeViewModel = themeViewModel)
+        }
+
+        // Edit habit screen
+        composable(
+            route = "Edit_Habit/{habitId}/{habitTitle}/{habitTime}",
+            arguments = listOf(
+                navArgument("habitId") { type = NavType.StringType },
+                navArgument("habitTitle") { type = NavType.StringType },
+                navArgument("habitTime") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val habitId = backStackEntry.arguments?.getString("habitId") ?: ""
+            val habitTitle = backStackEntry.arguments?.getString("habitTitle") ?: ""
+            val habitTime = backStackEntry.arguments?.getString("habitTime") ?: ""
+
+            EditHabitScreen(
+                navController = navController,
+                themeViewModel = themeViewModel,
+                habitId = habitId,
+                habitTitle = habitTitle,
+                habitTime = habitTime
+            )
         }
 
         composable("Settings_Screen") {
