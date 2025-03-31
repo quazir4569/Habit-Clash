@@ -4,8 +4,10 @@ import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
@@ -14,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,15 +32,45 @@ import hexis.habitclash.ui.theme.getAppThemeColors
 fun EditHabitScreen(
     navController: NavController,
     themeViewModel: ThemeViewModel,
-    habitId: String,
-    habitTitle: String,
-    habitTime: String
+    habitId: String
 ) {
-    var title by remember { mutableStateOf(habitTitle) }
-    var time by remember { mutableStateOf(habitTime) }
+    var title by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("") }
+    var frequency by remember { mutableStateOf("Daily") }
+    var goalCount by remember { mutableStateOf("1") }
+    var reminderTime by remember { mutableStateOf("") }
+
     val context = LocalContext.current
     val isDarkMode = themeViewModel.isDarkMode
     val colors = getAppThemeColors(isDarkMode)
+    val scrollState = rememberScrollState()
+
+    // Load full habit data
+    LaunchedEffect(habitId) {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId != null && habitId.isNotEmpty()) {
+            FirebaseFirestore.getInstance()
+                .collection("users")
+                .document(userId)
+                .collection("habits")
+                .document(habitId)
+                .get()
+                .addOnSuccessListener { document ->
+                    if (document != null && document.exists()) {
+                        val habit = document.toObject(Habit::class.java)
+                        if (habit != null) {
+                            title = habit.title
+                            description = habit.description
+                            category = habit.category
+                            frequency = habit.frequency
+                            goalCount = habit.goalCount.toString()
+                            reminderTime = habit.reminderTime ?: ""
+                        }
+                    }
+                }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -49,111 +80,52 @@ fun EditHabitScreen(
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(24.dp)
+                .verticalScroll(scrollState)
+                .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Header with back button
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 20.dp)
-            ) {
+            // Back button
+            Box(modifier = Modifier.fillMaxWidth()) {
                 IconButton(
                     onClick = { navController.popBackStack() },
                     modifier = Modifier.align(Alignment.CenterStart)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        tint = colors.textColor,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = colors.textColor)
                 }
-
-                Text(
-                    text = "Edit Habit",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.textColor,
-                    modifier = Modifier.align(Alignment.Center)
-                )
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Habit name input
-            Text(
-                text = "Habit Name:",
-                color = colors.secondaryTextColor,
-                fontWeight = FontWeight.Normal,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
-            )
-            OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                placeholder = { Text("Enter habit name", color = colors.secondaryTextColor) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(28.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = colors.accentColor,
-                    unfocusedBorderColor = colors.fieldBorderColor,
-                    focusedContainerColor = colors.fieldContainerColor,
-                    unfocusedContainerColor = colors.fieldContainerColor,
-                    focusedTextColor = colors.textColor,
-                    unfocusedTextColor = colors.textColor
-                )
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Time input
-            Text(
-                text = "Time:",
-                color = colors.secondaryTextColor,
-                fontWeight = FontWeight.Normal,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
-            )
-            OutlinedTextField(
-                value = time,
-                onValueChange = { time = it },
-                placeholder = { Text("e.g. 8:00 AM", color = colors.secondaryTextColor) },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
-                shape = RoundedCornerShape(28.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = colors.accentColor,
-                    unfocusedBorderColor = colors.fieldBorderColor,
-                    focusedContainerColor = colors.fieldContainerColor,
-                    unfocusedContainerColor = colors.fieldContainerColor,
-                    focusedTextColor = colors.textColor,
-                    unfocusedTextColor = colors.textColor
-                )
-            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Update button
+            // Input Fields
+            InputField("Habit Name", title, colors) { title = it }
+            InputField("Description", description, colors) { description = it }
+            InputField("Category", category, colors) { category = it }
+            InputField("Frequency", frequency, colors) { frequency = it }
+            InputField("Goal Count", goalCount, colors, keyboardType = KeyboardType.Number) { goalCount = it }
+            InputField("Reminder Time (optional)", reminderTime, colors) { reminderTime = it }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Update Button
             Button(
                 onClick = {
-                    // Update habit in Firebase
                     val userId = FirebaseAuth.getInstance().currentUser?.uid
-                    if (userId != null && title.isNotBlank() && time.isNotBlank()) {
+                    if (userId != null && title.isNotBlank()) {
                         val db = FirebaseFirestore.getInstance()
-                        val updatedHabit = hashMapOf(
-                            "title" to title,
-                            "time" to time
-                        )
+
+                        // Create a map of fields to update
+                        val updates = hashMapOf<String, Any>()
+                        updates["title"] = title
+                        updates["description"] = description
+                        updates["category"] = category
+                        updates["frequency"] = frequency
+                        updates["goalCount"] = goalCount.toIntOrNull() ?: 1
+                        updates["reminderTime"] = reminderTime
 
                         db.collection("users")
                             .document(userId)
                             .collection("habits")
                             .document(habitId)
-                            .update(updatedHabit as Map<String, Any>)
+                            .update(updates)
                             .addOnSuccessListener {
                                 Toast.makeText(context, "Habit updated", Toast.LENGTH_SHORT).show()
                                 navController.popBackStack()
@@ -163,24 +135,23 @@ fun EditHabitScreen(
                                 Toast.makeText(context, "Failed to update habit", Toast.LENGTH_SHORT).show()
                             }
                     } else {
-                        Toast.makeText(context, "Make sure all fields are filled", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Please fill in all required fields", Toast.LENGTH_SHORT).show()
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = colors.accentColor),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                shape = RoundedCornerShape(28.dp)
+                shape = RoundedCornerShape(28.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = colors.accentColor)
             ) {
                 Text("Update Habit", color = Color.White, fontSize = 18.sp)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Delete button
+            // Delete Button
             Button(
                 onClick = {
-                    // Delete from Firebase
                     val userId = FirebaseAuth.getInstance().currentUser?.uid
                     if (userId != null) {
                         FirebaseFirestore.getInstance()
@@ -207,8 +178,43 @@ fun EditHabitScreen(
             ) {
                 Text("Delete Habit", color = Color.White, fontSize = 18.sp)
             }
+
+            Spacer(modifier = Modifier.height(80.dp)) // Room below the button
         }
 
+        // Bottom navigation at the bottom
         BottomNavigationBar(navController, isDarkMode)
+    }
+}
+
+/**
+ * Input field for habit form with proper styling.
+ */
+@Composable
+private fun InputField(
+    label: String,
+    value: String,
+    colors: hexis.habitclash.ui.theme.AppThemeColors,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    onValueChange: (String) -> Unit
+) {
+    Column(modifier = Modifier.padding(bottom = 16.dp)) {
+        Text(text = "$label:", color = colors.secondaryTextColor, fontSize = 14.sp)
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            placeholder = { Text("Enter $label", color = colors.secondaryTextColor) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(28.dp),
+            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = keyboardType),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = colors.accentColor,
+                unfocusedBorderColor = colors.fieldBorderColor,
+                focusedContainerColor = colors.fieldContainerColor,
+                unfocusedContainerColor = colors.fieldContainerColor,
+                focusedTextColor = colors.textColor,
+                unfocusedTextColor = colors.textColor
+            )
+        )
     }
 }

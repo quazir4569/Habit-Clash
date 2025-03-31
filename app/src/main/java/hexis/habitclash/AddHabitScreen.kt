@@ -3,7 +3,6 @@ package hexis.habitclash
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,6 +24,10 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import hexis.habitclash.ui.theme.getAppThemeColors
 
+/**
+ * Screen for adding a new habit.
+ * Allows users to enter habit details and save to the database.
+ */
 @Composable
 fun AddHabitScreen(
     navController: NavController,
@@ -48,87 +50,93 @@ fun AddHabitScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(colors.backgroundColor)
-            .verticalScroll(scrollState)
-            .padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
-        // Header
-        Box(modifier = Modifier.fillMaxWidth()) {
-            IconButton(onClick = { navController.popBackStack() }) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = colors.textColor)
-            }
-            Text(
-                "Add a Habit",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = colors.textColor,
-                modifier = Modifier.align(Alignment.Center)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Input Fields
-        InputField("Habit Name", title) { title = it }
-        InputField("Description", description) { description = it }
-        InputField("Category", category) { category = it }
-        InputField("Frequency", frequency) { frequency = it }
-        InputField("Goal Count", goalCount, keyboardType = KeyboardType.Number) { goalCount = it }
-        InputField("Reminder Time (optional)", reminderTime) { reminderTime = it }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Save Button
-        Button(
-            onClick = {
-                val userId = FirebaseAuth.getInstance().currentUser?.uid
-                if (userId != null && title.isNotBlank()) {
-                    val db = FirebaseFirestore.getInstance()
-                    val habit = Habit(
-                        title = title,
-                        description = description,
-                        category = category,
-                        frequency = frequency,
-                        goalCount = goalCount.toIntOrNull() ?: 1,
-                        reminderTime = reminderTime,
-                        userId = userId
-                    )
-                    db.collection("users")
-                        .document(userId)
-                        .collection("habits")
-                        .add(habit)
-                        .addOnSuccessListener {
-                            navController.popBackStack()
-                        }
-                        .addOnFailureListener {
-                            Log.e("AddHabitScreen", "Error adding habit", it)
-                            Toast.makeText(context, "Failed to save habit", Toast.LENGTH_SHORT).show()
-                        }
-                } else {
-                    Toast.makeText(context, "Please fill in all required fields", Toast.LENGTH_SHORT).show()
-                }
-            },
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            shape = RoundedCornerShape(28.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = colors.accentColor)
+                .weight(1f)
+                .verticalScroll(scrollState)
+                .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
-            Text("Add Habit", color = Color.White, fontSize = 18.sp)
+            // Back button
+            Box(modifier = Modifier.fillMaxWidth()) {
+                IconButton(
+                    onClick = { navController.popBackStack() },
+                    modifier = Modifier.align(Alignment.CenterStart)
+                ) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = colors.textColor)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Input Fields
+            InputField("Habit Name", title, colors) { title = it }
+            InputField("Description", description, colors) { description = it }
+            InputField("Category", category, colors) { category = it }
+            InputField("Frequency", frequency, colors) { frequency = it }
+            InputField("Goal Count", goalCount, colors, keyboardType = KeyboardType.Number) { goalCount = it }
+            InputField("Reminder Time (optional)", reminderTime, colors) { reminderTime = it }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Save Button
+            Button(
+                onClick = {
+                    val userId = FirebaseAuth.getInstance().currentUser?.uid
+                    if (userId != null && title.isNotBlank()) {
+                        val db = FirebaseFirestore.getInstance()
+                        val habit = Habit(
+                            title = title,
+                            description = description,
+                            category = category,
+                            frequency = frequency,
+                            goalCount = goalCount.toIntOrNull() ?: 1,
+                            reminderTime = reminderTime,
+                            userId = userId
+                        )
+                        db.collection("users")
+                            .document(userId)
+                            .collection("habits")
+                            .add(habit)
+                            .addOnSuccessListener {
+                                navController.popBackStack()
+                            }
+                            .addOnFailureListener {
+                                Log.e("AddHabitScreen", "Error adding habit", it)
+                                Toast.makeText(context, "Failed to save habit", Toast.LENGTH_SHORT).show()
+                            }
+                    } else {
+                        Toast.makeText(context, "Please fill in all required fields", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(28.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = colors.accentColor)
+            ) {
+                Text("Add Habit", color = Color.White, fontSize = 18.sp)
+            }
+
+            Spacer(modifier = Modifier.height(80.dp)) // This gives room below the button
         }
 
-        Spacer(modifier = Modifier.height(80.dp)) // this is to give room below the button
+        // Bottom navigation
+        BottomNavigationBar(navController, isDarkMode)
     }
-
-    BottomNavigationBar(navController, isDarkMode)
 }
+
+/**
+ * Input field for habit form with proper styling.
+ */
 @Composable
 private fun InputField(
     label: String,
     value: String,
+    colors: hexis.habitclash.ui.theme.AppThemeColors,
     keyboardType: KeyboardType = KeyboardType.Text,
     onValueChange: (String) -> Unit
 ) {
-    val colors = getAppThemeColors(isSystemInDarkTheme())
     Column(modifier = Modifier.padding(bottom = 16.dp)) {
         Text(text = "$label:", color = colors.secondaryTextColor, fontSize = 14.sp)
         OutlinedTextField(
@@ -149,4 +157,3 @@ private fun InputField(
         )
     }
 }
-

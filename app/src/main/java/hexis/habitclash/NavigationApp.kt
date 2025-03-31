@@ -40,23 +40,17 @@ fun NavigationApp(modifier: Modifier = Modifier, authViewModel: AuthViewModel, t
 
         // Edit habit screen
         composable(
-            route = "Edit_Habit/{habitId}/{habitTitle}/{habitTime}",
+            route = "Edit_Habit/{habitId}",
             arguments = listOf(
-                navArgument("habitId") { type = NavType.StringType },
-                navArgument("habitTitle") { type = NavType.StringType },
-                navArgument("habitTime") { type = NavType.StringType }
+                navArgument("habitId") { type = NavType.StringType }
             )
         ) { backStackEntry ->
             val habitId = backStackEntry.arguments?.getString("habitId") ?: ""
-            val habitTitle = backStackEntry.arguments?.getString("habitTitle") ?: ""
-            val habitTime = backStackEntry.arguments?.getString("habitTime") ?: ""
 
             EditHabitScreen(
                 navController = navController,
                 themeViewModel = themeViewModel,
-                habitId = habitId,
-                habitTitle = habitTitle,
-                habitTime = habitTime
+                habitId = habitId
             )
         }
 
