@@ -22,10 +22,6 @@ import com.google.firebase.firestore.FirebaseFirestore
 import hexis.habitclash.ui.theme.AppThemeColors
 import hexis.habitclash.ui.theme.getAppThemeColors
 
-/**
- * Main dashboard screen showing user's habits.
- * Loads habits from Firebase and displays them in a list.
- */
 @Composable
 fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, themeViewModel: ThemeViewModel) {
     val authState = authViewModel.authState.observeAsState()
@@ -33,7 +29,6 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
     val isDarkMode = themeViewModel.isDarkMode
     val colors = getAppThemeColors(isDarkMode)
 
-    // Load habits from Firebase when screen opens
     LaunchedEffect(Unit) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId != null) {
@@ -53,7 +48,6 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
         }
     }
 
-    // Redirect to login if not authenticated
     if (authState.value is AuthState.Unauthenticated) {
         LaunchedEffect(Unit) {
             navController.navigate("Login_Screen")
@@ -72,7 +66,6 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                 .weight(1f)
                 .padding(horizontal = 24.dp)
         ) {
-            // Habits card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -91,7 +84,6 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
-                    // Show message if no habits, otherwise show habit list
                     if (habits.isEmpty()) {
                         Text(
                             "No habits yet. Use the Add Habit button below to create one.",
@@ -100,10 +92,7 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                     } else {
                         habits.forEach { habit ->
                             HabitItem(
-                                title = habit.title,
-                                time = habit.time,
-                                completed = habit.completed,
-                                isDarkMode = isDarkMode,
+                                habit = habit,
                                 colors = colors
                             )
                             Spacer(modifier = Modifier.height(16.dp))
@@ -117,23 +106,15 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
     }
 }
 
-/**
- * Individual habit item in the list.
- * Shows habit name, time, and completion status.
- */
 @Composable
 fun HabitItem(
-    title: String,
-    time: String,
-    completed: Boolean,
-    isDarkMode: Boolean,
+    habit: Habit,
     colors: AppThemeColors
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Habit icon
         Box(
             modifier = Modifier
                 .size(55.dp)
@@ -142,28 +123,25 @@ fun HabitItem(
             contentAlignment = Alignment.Center
         ) {}
 
-        // Habit details
         Column(
             modifier = Modifier
                 .weight(1f)
                 .padding(horizontal = 16.dp)
         ) {
-            Text(
-                text = title,
-                fontWeight = FontWeight.Medium,
-                fontSize = 16.sp,
-                color = colors.textColor
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = time,
-                color = colors.secondaryTextColor,
-                fontSize = 14.sp
-            )
+            Text(habit.title, fontWeight = FontWeight.Medium, fontSize = 16.sp, color = colors.textColor)
+            if (habit.description.isNotBlank()) {
+                Text(habit.description, color = colors.secondaryTextColor, fontSize = 13.sp)
+            }
+            if (habit.category.isNotBlank()) {
+                Text("Category: ${habit.category}", color = colors.secondaryTextColor, fontSize = 13.sp)
+            }
+            Text("Frequency: ${habit.frequency}, Goal: ${habit.goalCount}", color = colors.secondaryTextColor, fontSize = 13.sp)
+            if (!habit.reminderTime.isNullOrBlank()) {
+                Text("Reminder: ${habit.reminderTime}", color = colors.secondaryTextColor, fontSize = 13.sp)
+            }
         }
 
-        // Completed indicator
-        if (completed) {
+        if (habit.isCompletedToday) {
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -171,12 +149,7 @@ fun HabitItem(
                     .background(colors.accentColor),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = "Completed",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
+                Icon(Icons.Default.Check, contentDescription = "Completed", tint = Color.White, modifier = Modifier.size(24.dp))
             }
         }
     }
