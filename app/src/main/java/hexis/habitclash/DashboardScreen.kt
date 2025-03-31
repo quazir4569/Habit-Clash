@@ -239,11 +239,12 @@ fun HabitItemWithEdit(
             .clickable {
                 navController.navigate("Edit_Habit/${habit.id}")
             },
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
         // Checkbox
         Box(
             modifier = Modifier
+                .padding(top = 4.dp)
                 .size(28.dp)
                 .clip(RoundedCornerShape(4.dp))
                 .background(if (isCompleted) colors.accentColor else Color.Transparent)
@@ -256,7 +257,7 @@ fun HabitItemWithEdit(
                     // Toggle completion state
                     isCompleted = !isCompleted
 
-                    // Update in Firestore if we have the habit ID
+                    // Update in Firestore
                     if (userId != null && habit.id.isNotEmpty()) {
                         FirebaseFirestore.getInstance()
                             .collection("users")
@@ -282,31 +283,47 @@ fun HabitItemWithEdit(
 
         // Habit details
         Column(
-            modifier = Modifier
-                .weight(1f),
-            verticalArrangement = Arrangement.Center
+            modifier = Modifier.weight(1f)
         ) {
+            // Title
             Text(
                 text = habit.title,
                 fontWeight = FontWeight.Medium,
                 fontSize = 14.sp,
-                color = colors.textColor,
-                modifier = Modifier.offset(y = 1.dp)
+                color = colors.textColor
             )
 
+            // Description
             if (habit.description.isNotBlank()) {
                 Text(
                     text = habit.description,
                     color = colors.secondaryTextColor,
-                    fontSize = 12.sp,
-                    modifier = Modifier.offset(y = (-1).dp)
+                    fontSize = 12.sp
                 )
-            } else if (!habit.reminderTime.isNullOrBlank()) {
+            }
+
+            // Category
+            if (habit.category.isNotBlank()) {
                 Text(
-                    text = habit.reminderTime,
+                    text = "Category: ${habit.category}",
                     color = colors.secondaryTextColor,
-                    fontSize = 12.sp,
-                    modifier = Modifier.offset(y = (-1).dp)
+                    fontSize = 12.sp
+                )
+            }
+
+            // Frequency and Goal
+            Text(
+                text = "Frequency: ${habit.frequency}, Goal: ${habit.goalCount}",
+                color = colors.secondaryTextColor,
+                fontSize = 12.sp
+            )
+
+            // Reminder
+            if (!habit.reminderTime.isNullOrBlank()) {
+                Text(
+                    text = "Reminder: ${habit.reminderTime}",
+                    color = colors.secondaryTextColor,
+                    fontSize = 12.sp
                 )
             }
         }
