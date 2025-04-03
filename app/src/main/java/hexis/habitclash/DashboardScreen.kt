@@ -36,6 +36,14 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
     val isDarkMode = themeViewModel.isDarkMode
     val colors = getAppThemeColors(isDarkMode)
     var username by remember { mutableStateOf("User") }
+    val checkStates = remember { mutableStateListOf<Boolean>() }
+    val totalCount = habits.size
+    val checkedCount = habits.count {it.isCompletedToday }
+    val progress =  if (totalCount > 0) checkedCount.toFloat() / totalCount else 0f
+    var checked by remember { mutableStateOf(true) }
+
+
+
 
     // Load data from Firebase when screen opens
     LaunchedEffect(Unit) {
@@ -184,6 +192,24 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                         .fillMaxWidth()
                         .padding(20.dp)
                 ) {
+                    Text(text = "Habit Progress", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+
+                    // Progress Bar
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 10.dp),
+                        color = Color.Blue,
+                    )
+
+                    Text(
+                        text = "$checkedCount of $totalCount tasks completed ${"%.0f".format(progress * 100)}%",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(top = 8.dp)
+
+                    )
                     Text(
                         text = "Daily Habits",
                         fontWeight = FontWeight.Bold,
@@ -200,12 +226,24 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                         )
                     } else {
                         habits.forEachIndexed { index, habit ->
+
+
+
                             HabitItemWithEdit(
+
                                 habit = habit,
                                 isDarkMode = isDarkMode,
                                 colors = colors,
-                                navController = navController
+                                navController = navController,
+                                onCheckboxClicked = {updatinghabits ->
+                                    habits[index] = updatinghabits
+
+
+                                }
+
                             )
+
+
                             // Only add spacing if it's not the last item
                             if (index < habits.size - 1) {
                                 Spacer(modifier = Modifier.height(24.dp))
@@ -228,7 +266,8 @@ fun HabitItemWithEdit(
     habit: Habit,
     isDarkMode: Boolean,
     colors: AppThemeColors,
-    navController: NavController
+    navController: NavController,
+    onCheckboxClicked: (Habit) -> Unit
 ) {
     var isCompleted by remember { mutableStateOf(habit.isCompletedToday) }
     val userId = FirebaseAuth.getInstance().currentUser?.uid
@@ -256,6 +295,8 @@ fun HabitItemWithEdit(
                 .clickable(onClick = {
                     // Toggle completion state
                     isCompleted = !isCompleted
+
+                    onCheckboxClicked(habit.copy(isCompletedToday = isCompleted))
 
                     // Update in Firestore
                     if (userId != null && habit.id.isNotEmpty()) {
