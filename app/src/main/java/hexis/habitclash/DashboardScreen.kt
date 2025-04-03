@@ -36,11 +36,10 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
     val isDarkMode = themeViewModel.isDarkMode
     val colors = getAppThemeColors(isDarkMode)
     var username by remember { mutableStateOf("User") }
-    val checkStates = remember { mutableStateListOf<Boolean>() }
+    var completeDialog by remember { mutableStateOf(false) }
     val totalCount = habits.size
     val checkedCount = habits.count {it.isCompletedToday }
     val progress =  if (totalCount > 0) checkedCount.toFloat() / totalCount else 0f
-    var checked by remember { mutableStateOf(true) }
 
 
 
@@ -82,6 +81,10 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
         LaunchedEffect(Unit) {
             navController.navigate("Login_Screen")
         }
+    }
+
+    if( progress == 1f && !completeDialog){
+        completeDialog = true
     }
 
     Column(
@@ -179,6 +182,22 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                     }
                 }
             }
+            //AlertDialog upon 100% progress indicator/all checked from checkbox
+            if (completeDialog) {
+                AlertDialog(
+                    onDismissRequest = { completeDialog = false },
+                    title = { Text("Congratulation!") },
+                    text = { Text("You finished your daily habits!") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            completeDialog = false
+                            navController.popBackStack()
+                        }) {
+                            Text("Lets Go back!")
+                        }
+                    }
+                )
+            }
 
             // Habits card
             Card(
@@ -227,22 +246,38 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                     } else {
                         habits.forEachIndexed { index, habit ->
 
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ){
 
+                                Checkbox(
+                                    checked = habit.isCompletedToday,
+                                    onCheckedChange = { isChecked ->
+                                        habits[index] = habit.copy(isCompletedToday = isChecked)
 
-                            HabitItemWithEdit(
+                                        val userId = FirebaseAuth.getInstance().currentUser?.uid
 
-                                habit = habit,
-                                isDarkMode = isDarkMode,
-                                colors = colors,
-                                navController = navController,
-                                onCheckboxClicked = {updatinghabits ->
-                                    habits[index] = updatinghabits
+                                        if (userId != null && habit.id.isNotEmpty()) {
+                                            FirebaseFirestore.getInstance()
+                                                .collection("users")
+                                                .document(userId)
+                                                .collection("habits")
+                                                .document(habit.id)
+                                                .update("isCompletedToday", isChecked)
+                                        }
+                                    }
+                                )
 
+                                HabitItemWithEdit(
 
-                                }
+                                    habit = habit,
+                                    isDarkMode = isDarkMode,
+                                    colors = colors,
+                                    navController = navController,
 
-                            )
-
+                                )
+                            }
 
                             // Only add spacing if it's not the last item
                             if (index < habits.size - 1) {
@@ -267,7 +302,7 @@ fun HabitItemWithEdit(
     isDarkMode: Boolean,
     colors: AppThemeColors,
     navController: NavController,
-    onCheckboxClicked: (Habit) -> Unit
+
 ) {
     var isCompleted by remember { mutableStateOf(habit.isCompletedToday) }
     val userId = FirebaseAuth.getInstance().currentUser?.uid
@@ -280,45 +315,6 @@ fun HabitItemWithEdit(
             },
         verticalAlignment = Alignment.Top
     ) {
-        // Checkbox
-        Box(
-            modifier = Modifier
-                .padding(top = 4.dp)
-                .size(28.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(if (isCompleted) colors.accentColor else Color.Transparent)
-                .border(
-                    width = 2.dp,
-                    color = colors.accentColor,
-                    shape = RoundedCornerShape(4.dp)
-                )
-                .clickable(onClick = {
-                    // Toggle completion state
-                    isCompleted = !isCompleted
-
-                    onCheckboxClicked(habit.copy(isCompletedToday = isCompleted))
-
-                    // Update in Firestore
-                    if (userId != null && habit.id.isNotEmpty()) {
-                        FirebaseFirestore.getInstance()
-                            .collection("users")
-                            .document(userId)
-                            .collection("habits")
-                            .document(habit.id)
-                            .update("isCompletedToday", isCompleted)
-                    }
-                }),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isCompleted) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = "Completed",
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
 
         Spacer(modifier = Modifier.width(24.dp))
 
@@ -370,3 +366,4 @@ fun HabitItemWithEdit(
         }
     }
 }
+
