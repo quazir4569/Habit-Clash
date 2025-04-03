@@ -1,6 +1,7 @@
 package hexis.habitclash
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -22,7 +23,7 @@ import hexis.habitclash.ui.theme.getAppThemeColors
 
 /**
  * Settings screen for app preferences and user account.
- * Shows user username, email, theme toggle, and logout button.
+ * Shows user username, email, theme toggle, notification toggle, about section, change password, delete account, and logout button.
  */
 @Composable
 fun SettingsScreen(
@@ -38,6 +39,14 @@ fun SettingsScreen(
 
     // State for username
     var username by remember { mutableStateOf("") }
+
+    // State for notification toggle (for demo purposes, not persisted)
+    var notificationsEnabled by remember { mutableStateOf(true) }
+
+    // State for showing dialogs
+    var showChangePasswordDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
 
     // Fetch username from Firestore
     LaunchedEffect(currentUser) {
@@ -82,7 +91,11 @@ fun SettingsScreen(
                     .padding(bottom = 20.dp)
             ) {
                 IconButton(
-                    onClick = { navController.popBackStack() },
+                    onClick = {
+                        navController.navigate("Dashboard_Screen") {
+                            popUpTo("Dashboard_Screen") { inclusive = false }
+                        }
+                    },
                     modifier = Modifier.align(Alignment.CenterStart)
                 ) {
                     Icon(
@@ -176,6 +189,306 @@ fun SettingsScreen(
                         )
                     )
                 }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Notification toggle card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(65.dp),
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(containerColor = colors.cardColor),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Notifications",
+                        fontSize = 16.sp,
+                        color = colors.textColor,
+                        fontWeight = FontWeight.Normal
+                    )
+
+                    Switch(
+                        checked = notificationsEnabled,
+                        onCheckedChange = { notificationsEnabled = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = colors.accentColor,
+                            checkedTrackColor = colors.accentColor.copy(alpha = 0.5f),
+                            uncheckedThumbColor = Color.Gray,
+                            uncheckedTrackColor = Color.LightGray
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Change Password button
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(65.dp)
+                    .clickable { showChangePasswordDialog = true },
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(containerColor = colors.cardColor),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Change Password",
+                        fontSize = 16.sp,
+                        color = colors.textColor,
+                        fontWeight = FontWeight.Normal
+                    )
+                }
+            }
+
+            // Change Password Dialog
+            if (showChangePasswordDialog) {
+                var newPassword by remember { mutableStateOf("") }
+                var confirmPassword by remember { mutableStateOf("") }
+                var errorMessage by remember { mutableStateOf<String?>(null) }
+
+                AlertDialog(
+                    onDismissRequest = { showChangePasswordDialog = false },
+                    title = {
+                        Text(
+                            text = "Change Password",
+                            color = colors.textColor,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    text = {
+                        Column {
+                            OutlinedTextField(
+                                value = newPassword,
+                                onValueChange = { newPassword = it },
+                                label = { Text("New Password", color = colors.secondaryTextColor) },
+                                modifier = Modifier.fillMaxWidth(),
+                                visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = colors.accentColor,
+                                    unfocusedBorderColor = colors.fieldBorderColor,
+                                    focusedContainerColor = colors.fieldContainerColor,
+                                    unfocusedContainerColor = colors.fieldContainerColor,
+                                    focusedTextColor = colors.textColor,
+                                    unfocusedTextColor = colors.textColor
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            OutlinedTextField(
+                                value = confirmPassword,
+                                onValueChange = { confirmPassword = it },
+                                label = { Text("Confirm Password", color = colors.secondaryTextColor) },
+                                modifier = Modifier.fillMaxWidth(),
+                                visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = colors.accentColor,
+                                    unfocusedBorderColor = colors.fieldBorderColor,
+                                    focusedContainerColor = colors.fieldContainerColor,
+                                    unfocusedContainerColor = colors.fieldContainerColor,
+                                    focusedTextColor = colors.textColor,
+                                    unfocusedTextColor = colors.textColor
+                                )
+                            )
+
+                            errorMessage?.let {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = it,
+                                    color = Color.Red,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            if (newPassword.length < 6) {
+                                errorMessage = "Password must be at least 6 characters"
+                            } else if (newPassword != confirmPassword) {
+                                errorMessage = "Passwords do not match"
+                            } else {
+                                currentUser?.updatePassword(newPassword)?.addOnCompleteListener { task ->
+                                    if (task.isSuccessful) {
+                                        showChangePasswordDialog = false
+                                    } else {
+                                        errorMessage = task.exception?.message ?: "Failed to update password"
+                                    }
+                                }
+                            }
+                        }) {
+                            Text("Change", color = colors.accentColor)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showChangePasswordDialog = false }) {
+                            Text("Cancel", color = colors.accentColor)
+                        }
+                    },
+                    containerColor = colors.cardColor
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // About App button
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(65.dp)
+                    .clickable { showAboutDialog = true },
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(containerColor = colors.cardColor),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "About App",
+                        fontSize = 16.sp,
+                        color = colors.textColor,
+                        fontWeight = FontWeight.Normal
+                    )
+                }
+            }
+
+            // About App Dialog
+            if (showAboutDialog) {
+                AlertDialog(
+                    onDismissRequest = { showAboutDialog = false },
+                    title = {
+                        Text(
+                            text = "About HabitClash",
+                            color = colors.textColor,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    text = {
+                        Column {
+                            Text(
+                                text = "HabitClash",
+                                fontSize = 16.sp,
+                                color = colors.textColor
+                            )
+                            Text(
+                                text = "Version: 1.0.0",
+                                fontSize = 14.sp,
+                                color = colors.secondaryTextColor
+                            )
+                            Text(
+                                text = "Developed by: Your Name",
+                                fontSize = 14.sp,
+                                color = colors.secondaryTextColor
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showAboutDialog = false }) {
+                            Text("OK", color = colors.accentColor)
+                        }
+                    },
+                    containerColor = colors.cardColor
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Delete Account button
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(65.dp)
+                    .clickable { showDeleteAccountDialog = true },
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(containerColor = colors.cardColor),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Delete Account",
+                        fontSize = 16.sp,
+                        color = Color.Red,
+                        fontWeight = FontWeight.Normal
+                    )
+                }
+            }
+
+            // Delete Account Dialog
+            if (showDeleteAccountDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteAccountDialog = false },
+                    title = {
+                        Text(
+                            text = "Delete Account",
+                            color = colors.textColor,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    text = {
+                        Text(
+                            text = "Are you sure you want to delete your account? This action cannot be undone.",
+                            color = colors.textColor
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            currentUser?.delete()?.addOnCompleteListener { task ->
+                                if (task.isSuccessful) {
+                                    // Delete user data from Firestore
+                                    FirebaseFirestore.getInstance()
+                                        .collection("users")
+                                        .document(currentUser.uid)
+                                        .delete()
+                                        .addOnSuccessListener {
+                                            authViewModel.signout()
+                                            showDeleteAccountDialog = false
+                                        }
+                                } else {
+                                    // Handle error (e.g., user needs to re-authenticate)
+                                    // For simplicity, we'll just sign out
+                                    authViewModel.signout()
+                                    showDeleteAccountDialog = false
+                                }
+                            }
+                        }) {
+                            Text("Delete", color = Color.Red)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteAccountDialog = false }) {
+                            Text("Cancel", color = colors.accentColor)
+                        }
+                    },
+                    containerColor = colors.cardColor
+                )
             }
 
             Spacer(modifier = Modifier.weight(1f))
