@@ -1,13 +1,11 @@
 package hexis.habitclash
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,10 +34,10 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
     val isDarkMode = themeViewModel.isDarkMode
     val colors = getAppThemeColors(isDarkMode)
     var username by remember { mutableStateOf("User") }
-    var completeDialog by remember { mutableStateOf(false) }
     val totalCount = habits.size
     val checkedCount = habits.count {it.isCompletedToday }
-    val progress =  if (totalCount > 0) checkedCount.toFloat() / totalCount else 0f
+    var completeDialog by remember { mutableStateOf(false) }
+    var progress by remember { mutableFloatStateOf(0f) }
 
 
 
@@ -82,6 +80,10 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
             navController.navigate("Login_Screen")
         }
     }
+
+    val totalHabits = habits.size
+    val completedHabits = habits.count {it.isCompletedToday}
+    progress = if(totalHabits > 0 ) completedHabits.toFloat() / totalHabits else 0f
 
     if( progress == 1f && !completeDialog){
         completeDialog = true
@@ -266,6 +268,9 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                                                 .document(habit.id)
                                                 .update("isCompletedToday", isChecked)
                                         }
+
+                                        val checkedCount = habits.count{it.isCompletedToday}
+                                        progress = if(habits.isNotEmpty()) checkedCount.toFloat() / habits.size else 0f
                                     }
                                 )
 
