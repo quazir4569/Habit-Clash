@@ -3,7 +3,9 @@ package hexis.habitclash
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExitToApp
@@ -21,10 +23,6 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import hexis.habitclash.ui.theme.getAppThemeColors
 
-/**
- * Settings screen for app preferences and user account.
- * Shows user username, email, theme toggle, notification toggle, about section, change password, delete account, and logout button.
- */
 @Composable
 fun SettingsScreen(
     navController: NavController,
@@ -37,18 +35,15 @@ fun SettingsScreen(
     val authState = authViewModel.authState.observeAsState()
     val colors = getAppThemeColors(isDarkMode)
 
-    // State for username
+    val scrollState = rememberScrollState()
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
     var username by remember { mutableStateOf("") }
-
-    // State for notification toggle (for demo purposes, not persisted)
     var notificationsEnabled by remember { mutableStateOf(true) }
-
-    // State for showing dialogs
     var showChangePasswordDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
 
-    // Fetch username from Firestore
     LaunchedEffect(currentUser) {
         if (currentUser != null) {
             FirebaseFirestore.getInstance()
@@ -63,7 +58,6 @@ fun SettingsScreen(
         }
     }
 
-    // Redirect to login if not authenticated
     LaunchedEffect(authState.value) {
         if (authState.value is AuthState.Unauthenticated) {
             navController.navigate("Login_Screen") {
@@ -81,10 +75,10 @@ fun SettingsScreen(
             modifier = Modifier
                 .weight(1f)
                 .padding(24.dp)
+                .verticalScroll(scrollState)
         ) {
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Header with back button
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -117,7 +111,6 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // User info card with username and email
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -132,17 +125,13 @@ fun SettingsScreen(
                         .padding(horizontal = 20.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // Username
                     Text(
                         text = username,
                         fontSize = 18.sp,
                         color = colors.textColor,
                         fontWeight = FontWeight.Medium
                     )
-
                     Spacer(modifier = Modifier.height(8.dp))
-
-                    // Email
                     Text(
                         text = userEmail,
                         fontSize = 14.sp,
@@ -154,7 +143,6 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Theme toggle card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -170,14 +158,7 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        text = "Theme",
-                        fontSize = 16.sp,
-                        color = colors.textColor,
-                        fontWeight = FontWeight.Normal
-                    )
-
-                    // Dark/light mode switch
+                    Text("Theme", fontSize = 16.sp, color = colors.textColor)
                     Switch(
                         checked = isDarkMode,
                         onCheckedChange = { themeViewModel.toggleTheme() },
@@ -193,7 +174,6 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Notification toggle card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -209,13 +189,7 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        text = "Notifications",
-                        fontSize = 16.sp,
-                        color = colors.textColor,
-                        fontWeight = FontWeight.Normal
-                    )
-
+                    Text("Notifications", fontSize = 16.sp, color = colors.textColor)
                     Switch(
                         checked = notificationsEnabled,
                         onCheckedChange = { notificationsEnabled = it },
@@ -231,7 +205,6 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Change Password button
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -245,19 +218,12 @@ fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Change Password",
-                        fontSize = 16.sp,
-                        color = colors.textColor,
-                        fontWeight = FontWeight.Normal
-                    )
+                    Text("Change Password", fontSize = 16.sp, color = colors.textColor)
                 }
             }
 
-            // Change Password Dialog
             if (showChangePasswordDialog) {
                 var newPassword by remember { mutableStateOf("") }
                 var confirmPassword by remember { mutableStateOf("") }
@@ -265,13 +231,7 @@ fun SettingsScreen(
 
                 AlertDialog(
                     onDismissRequest = { showChangePasswordDialog = false },
-                    title = {
-                        Text(
-                            text = "Change Password",
-                            color = colors.textColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
+                    title = { Text("Change Password", color = colors.textColor, fontWeight = FontWeight.Bold) },
                     text = {
                         Column {
                             OutlinedTextField(
@@ -289,9 +249,7 @@ fun SettingsScreen(
                                     unfocusedTextColor = colors.textColor
                                 )
                             )
-
                             Spacer(modifier = Modifier.height(8.dp))
-
                             OutlinedTextField(
                                 value = confirmPassword,
                                 onValueChange = { confirmPassword = it },
@@ -307,14 +265,9 @@ fun SettingsScreen(
                                     unfocusedTextColor = colors.textColor
                                 )
                             )
-
                             errorMessage?.let {
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = it,
-                                    color = Color.Red,
-                                    fontSize = 14.sp
-                                )
+                                Text(it, color = Color.Red, fontSize = 14.sp)
                             }
                         }
                     },
@@ -325,17 +278,12 @@ fun SettingsScreen(
                             } else if (newPassword != confirmPassword) {
                                 errorMessage = "Passwords do not match"
                             } else {
-                                currentUser?.updatePassword(newPassword)?.addOnCompleteListener { task ->
-                                    if (task.isSuccessful) {
-                                        showChangePasswordDialog = false
-                                    } else {
-                                        errorMessage = task.exception?.message ?: "Failed to update password"
-                                    }
+                                currentUser?.updatePassword(newPassword)?.addOnCompleteListener {
+                                    if (it.isSuccessful) showChangePasswordDialog = false
+                                    else errorMessage = it.exception?.message ?: "Failed to update password"
                                 }
                             }
-                        }) {
-                            Text("Change", color = colors.accentColor)
-                        }
+                        }) { Text("Change", color = colors.accentColor) }
                     },
                     dismissButton = {
                         TextButton(onClick = { showChangePasswordDialog = false }) {
@@ -348,7 +296,6 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // About App button
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -362,46 +309,21 @@ fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "About App",
-                        fontSize = 16.sp,
-                        color = colors.textColor,
-                        fontWeight = FontWeight.Normal
-                    )
+                    Text("About App", fontSize = 16.sp, color = colors.textColor)
                 }
             }
 
-            // About App Dialog
             if (showAboutDialog) {
                 AlertDialog(
                     onDismissRequest = { showAboutDialog = false },
-                    title = {
-                        Text(
-                            text = "About HabitClash",
-                            color = colors.textColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
+                    title = { Text("About HabitClash", color = colors.textColor, fontWeight = FontWeight.Bold) },
                     text = {
                         Column {
-                            Text(
-                                text = "HabitClash",
-                                fontSize = 16.sp,
-                                color = colors.textColor
-                            )
-                            Text(
-                                text = "Version: 1.0.0",
-                                fontSize = 14.sp,
-                                color = colors.secondaryTextColor
-                            )
-                            Text(
-                                text = "Developed by: Your Name",
-                                fontSize = 14.sp,
-                                color = colors.secondaryTextColor
-                            )
+                            Text("HabitClash", fontSize = 16.sp, color = colors.textColor)
+                            Text("Version: 1.0.0", fontSize = 14.sp, color = colors.secondaryTextColor)
+                            Text("Developed by: Hexis", fontSize = 14.sp, color = colors.secondaryTextColor)
                         }
                     },
                     confirmButton = {
@@ -414,6 +336,50 @@ fun SettingsScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Logout confirmation dialog
+            if (showLogoutDialog) {
+                AlertDialog(
+                    onDismissRequest = { showLogoutDialog = false },
+                    title = { Text("Log Out", color = colors.textColor, fontWeight = FontWeight.Bold) },
+                    text = { Text("Are you sure you want to log out?", color = colors.textColor) },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            authViewModel.signout()
+                            showLogoutDialog = false
+                        }) {
+                            Text("Log Out", color = Color.Red)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showLogoutDialog = false }) {
+                            Text("Cancel", color = colors.accentColor)
+                        }
+                    },
+                    containerColor = colors.cardColor
+                )
+            }
+
+            // Logout button
+            Button(
+                onClick = { showLogoutDialog = true },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(28.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ExitToApp,
+                    contentDescription = "Sign Out",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Logout", fontSize = 18.sp, color = Color.White)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp)) // gap between logout and delete
 
             // Delete Account button
             Card(
@@ -429,40 +395,21 @@ fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Delete Account",
-                        fontSize = 16.sp,
-                        color = Color.Red,
-                        fontWeight = FontWeight.Normal
-                    )
+                    Text("Delete Account", fontSize = 16.sp, color = Color.Red)
                 }
             }
 
-            // Delete Account Dialog
             if (showDeleteAccountDialog) {
                 AlertDialog(
                     onDismissRequest = { showDeleteAccountDialog = false },
-                    title = {
-                        Text(
-                            text = "Delete Account",
-                            color = colors.textColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    text = {
-                        Text(
-                            text = "Are you sure you want to delete your account? This action cannot be undone.",
-                            color = colors.textColor
-                        )
-                    },
+                    title = { Text("Delete Account", color = colors.textColor, fontWeight = FontWeight.Bold) },
+                    text = { Text("Are you sure you want to delete your account? This action cannot be undone.", color = colors.textColor) },
                     confirmButton = {
                         TextButton(onClick = {
-                            currentUser?.delete()?.addOnCompleteListener { task ->
-                                if (task.isSuccessful) {
-                                    // Delete user data from Firestore
+                            currentUser?.delete()?.addOnCompleteListener {
+                                if (it.isSuccessful) {
                                     FirebaseFirestore.getInstance()
                                         .collection("users")
                                         .document(currentUser.uid)
@@ -472,8 +419,6 @@ fun SettingsScreen(
                                             showDeleteAccountDialog = false
                                         }
                                 } else {
-                                    // Handle error (e.g., user needs to re-authenticate)
-                                    // For simplicity, we'll just sign out
                                     authViewModel.signout()
                                     showDeleteAccountDialog = false
                                 }
@@ -489,29 +434,6 @@ fun SettingsScreen(
                     },
                     containerColor = colors.cardColor
                 )
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Logout button
-            Button(
-                onClick = {
-                    authViewModel.signout()
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(28.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ExitToApp,
-                    contentDescription = "Sign Out",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Logout", fontSize = 18.sp, color = Color.White)
             }
         }
 
