@@ -11,22 +11,24 @@ import androidx.compose.ui.Modifier
 import hexis.habitclash.ui.theme.HabitClashTheme
 
 /**
- * Main app entry point.
- * Sets up theme and starts the app.
+ * Main entry point for the app.
+ * Sets up ViewModels, theme, and navigation.
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge() // Full screen mode
+        enableEdgeToEdge() // Enable edge-to-edge display
 
-        // Set up view models
+        // Initialize ViewModels
         val authViewModel: AuthViewModel by viewModels()
         val themeViewModel: ThemeViewModel by viewModels()
 
         setContent {
-            // Apply theme based on dark/light mode setting
+            // Apply theme based on current mode
             HabitClashTheme(darkTheme = themeViewModel.isDarkMode) {
+                // Main app scaffold
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    // Set up navigation
                     NavigationApp(
                         modifier = Modifier.padding(innerPadding),
                         authViewModel = authViewModel,

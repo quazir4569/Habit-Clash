@@ -16,16 +16,17 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import hexis.habitclash.ui.theme.getAppThemeColors
 
 /**
- * Bottom navigation bar used across the app.
- * Handles moving between main screens.
+ * Bottom navigation bar for app-wide navigation.
+ * Provides quick access to main app screens.
  */
 @Composable
 fun BottomNavigationBar(navController: NavController, isDarkMode: Boolean = false) {
+    // Get current route to highlight active tab
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val colors = getAppThemeColors(isDarkMode)
 
-    // List of navigation items
+    // Navigation items configuration
     val items = listOf(
         BottomNavItem(
             title = "Dashboard",
@@ -44,6 +45,7 @@ fun BottomNavigationBar(navController: NavController, isDarkMode: Boolean = fals
         )
     )
 
+    // Navigation bar with rounded corners
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -56,6 +58,7 @@ fun BottomNavigationBar(navController: NavController, isDarkMode: Boolean = fals
             containerColor = colors.backgroundColor,
             tonalElevation = 0.dp
         ) {
+            // Create navigation items
             items.forEach { item ->
                 NavigationBarItem(
                     icon = {
@@ -97,10 +100,11 @@ fun BottomNavigationBar(navController: NavController, isDarkMode: Boolean = fals
 }
 
 /**
- * Data for a bottom navigation item.
+ * Data class representing a bottom navigation item.
+ * Stores information needed to display and navigate to a screen.
  */
 data class BottomNavItem(
-    val title: String,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
-    val route: String
+    val title: String,   // Display text
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,  // Icon
+    val route: String    // Navigation route
 )

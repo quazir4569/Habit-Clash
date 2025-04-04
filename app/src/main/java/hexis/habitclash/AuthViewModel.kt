@@ -7,20 +7,25 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
 /**
- * Handles user login, signup, and tracks auth status.
- * Uses Firebase for user management.
+ * Authentication ViewModel for handling user authentication.
+ * Manages login, registration, and authentication state.
  */
 class AuthViewModel : ViewModel() {
+    // Firebase auth instance
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+
+    // Authentication state LiveData
     private val _authState = MutableLiveData<AuthState>()
     val authState: LiveData<AuthState> = _authState
 
     init {
+        // Check auth status when ViewModel is created
         checkAuthStatus()
     }
 
     /**
-     * Checks if user is logged in and updates state.
+     * Checks if the user is currently authenticated.
+     * Updates the authState based on Firebase Auth state.
      */
     fun checkAuthStatus() {
         if (auth.currentUser == null) {
@@ -31,17 +36,20 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
-     * Logs in a user with email and password.
-     * Updates auth state based on result.
+     * Signs in a user with email and password.
+     * Validates input and updates authentication state.
      */
     fun login(email: String, password: String) {
+        // Set loading state
         _authState.value = AuthState.Loading
 
+        // Validate inputs
         if (email.isEmpty() || password.isEmpty()) {
             _authState.value = AuthState.Error("Email or password must be filled")
             return
         }
 
+        // Attempt Firebase login
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
@@ -53,23 +61,26 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
-     * Creates a new user account.
-     * Updates auth state based on result.
+     * Creates a new user account and profile.
+     * Validates inputs, creates auth account, and stores user profile.
      */
     fun registration(email: String, password: String, username: String) {
+        // Set loading state
         _authState.value = AuthState.Loading
 
+        // Validate inputs
         if (email.isEmpty() || password.isEmpty() || username.isEmpty()) {
             _authState.value = AuthState.Error("All fields must be filled")
             return
         }
 
+        // Attempt to create Firebase account
         auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     _authState.value = AuthState.Authenticated
 
-                    // Save username as a background operation
+                    // Store user profile in Firestore
                     val userId = auth.currentUser?.uid
                     if (userId != null) {
                         val userDoc = FirebaseFirestore.getInstance().collection("users").document(userId)
@@ -87,6 +98,7 @@ class AuthViewModel : ViewModel() {
 
     /**
      * Signs out the current user.
+     * Updates authentication state to unauthenticated.
      */
     fun signout() {
         auth.signOut()
@@ -95,11 +107,12 @@ class AuthViewModel : ViewModel() {
 }
 
 /**
- * All possible auth states in the app.
+ * Authentication state sealed class.
+ * Represents all possible auth states in the app.
  */
 sealed class AuthState {
-    object Authenticated : AuthState()
-    object Unauthenticated : AuthState()
-    object Loading : AuthState()
-    data class Error(val message: String) : AuthState()
+    object Authenticated : AuthState()        // User is logged in
+    object Unauthenticated : AuthState()      // User is logged out
+    object Loading : AuthState()              // Authentication in progress
+    data class Error(val message: String) : AuthState()  // Authentication error with message
 }
