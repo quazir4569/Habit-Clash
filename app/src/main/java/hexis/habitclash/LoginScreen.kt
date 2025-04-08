@@ -124,12 +124,13 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, them
         Spacer(modifier = Modifier.height(8.dp))
 
         // Forgot password link
-        Text(
+        TextButton(onClick = {
+            navController.navigate("ForgetPassword_Screen")
+        }) {Text(
             text = "Forgot Password?",
             fontSize = 14.sp,
-            color = colors.secondaryTextColor,
-            modifier = Modifier.align(Alignment.End)
-        )
+            color = colors.secondaryTextColor
+        )}
 
         Spacer(modifier = Modifier.height(24.dp))
 

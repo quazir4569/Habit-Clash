@@ -29,6 +29,10 @@ fun NavigationApp(modifier: Modifier = Modifier, authViewModel: AuthViewModel, t
             RegistrationScreen(navController, authViewModel, themeViewModel)
         }
 
+        composable("ForgetPassword_Screen") {
+            ForgetPasswordScreen(navController, authViewModel, themeViewModel)
+        }
+
         // Main app screens
         composable("Dashboard_Screen") {
             DashboardScreen(navController, authViewModel, themeViewModel)

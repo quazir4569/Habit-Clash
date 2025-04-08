@@ -97,6 +97,22 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
+     * Password Reset for the email.
+     */
+    fun forgetPasswords(email:String){
+
+        if (email.isEmpty()) {
+            _authState.value = AuthState.Error("Please enter your known email")
+            return
+        }
+
+        else {
+            auth.sendPasswordResetEmail(email)
+        }
+
+    }
+
+    /**
      * Signs out the current user.
      * Updates authentication state to unauthenticated.
      */
