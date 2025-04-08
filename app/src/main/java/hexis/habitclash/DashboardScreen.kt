@@ -1,5 +1,6 @@
 package hexis.habitclash
 
+import android.util.Half.toFloat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -42,6 +43,7 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
     val checkedCount = habits.count {it.isCompletedToday }
     var completeDialog by remember { mutableStateOf(false) }
     var progress by remember { mutableFloatStateOf(0f) }
+    val newUpdatedHabit = remember {mutableStateListOf<String>()}
 
     // Load user data from Firebase
     LaunchedEffect(Unit) {
@@ -65,13 +67,37 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                 .collection("habits")
                 .addSnapshotListener { snapshot, error ->
                     if (error == null && snapshot != null) {
-                        habits.clear()
+                        val updatedHabits = mutableListOf<Habit>()
                         for (doc in snapshot.documents) {
                             val habit = doc.toObject(Habit::class.java)?.copy(id = doc.id)
-                            if (habit != null) habits.add(habit)
+                            if (habit != null) {
+                                // Only add if it's not in the "recently updated" set
+                                if (!newUpdatedHabit.contains(habit.id)) {
+                                    updatedHabits.add(habit)
+                                }
+                            }
                         }
+
+                        // Replace only habits that weren't just updated
+                        updatedHabits.forEach { newHabit ->
+                            val index = habits.indexOfFirst { it.id == newHabit.id }
+                            if (index != -1) {
+                                habits[index] = newHabit
+                            } else {
+                                habits.add(newHabit)
+                            }
+                        }
+
+                        // Clean up the recently updated list
+                        newUpdatedHabit.clear()
+
+                        // Update progress
+                        progress = if (habits.isNotEmpty()) {
+                            habits.count { it.isCompletedToday }.toFloat() / habits.size
+                        } else 0f
                     }
                 }
+
         }
     }
 
@@ -301,7 +327,8 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                                 Checkbox(
                                     checked = habit.isCompletedToday,
                                     onCheckedChange = { isChecked ->
-                                        habits[index] = habit.copy(isCompletedToday = isChecked)
+                                        val updated = habit.copy(isCompletedToday = isChecked)
+
 
                                         val userId = FirebaseAuth.getInstance().currentUser?.uid
 
@@ -314,9 +341,12 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                                                 .update("isCompletedToday", isChecked)
                                         }
 
+                                        newUpdatedHabit.add(habit.id)
+
+                                        habits[index] = updated
+
                                         // Update progress when checkbox is clicked
-                                        val checkedCount = habits.count{it.isCompletedToday}
-                                        progress = if(habits.isNotEmpty()) checkedCount.toFloat() / habits.size else 0f
+                                        progress = if(habits.isNotEmpty()){ habits.count{it.isCompletedToday}.toFloat() / habits.size }else 0f
                                     },
                                     modifier = Modifier
                                         .size(24.dp)
@@ -362,7 +392,7 @@ fun HabitItemWithEdit(
     colors: AppThemeColors,
     navController: NavController,
 ) {
-    var isCompleted by remember { mutableStateOf(habit.isCompletedToday) }
+
     val userId = FirebaseAuth.getInstance().currentUser?.uid
 
     Row(
