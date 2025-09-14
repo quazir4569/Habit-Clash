@@ -19,7 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
+import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import hexis.habitclash.ui.theme.AppThemeColors
@@ -30,7 +30,11 @@ import hexis.habitclash.ui.theme.getAppThemeColors
  * Loads habits from Firebase and displays them in a list.
  */
 @Composable
-fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, themeViewModel: ThemeViewModel) {
+fun DashboardScreen(
+    navController: NavHostController,
+    authViewModel: AuthViewModel,
+    themeViewModel: ThemeViewModel
+) {
     val authState = authViewModel.authState.observeAsState()
     val habits = remember { mutableStateListOf<Habit>() }
     val isDarkMode = themeViewModel.isDarkMode
@@ -38,18 +42,13 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
     val scrollState = rememberScrollState()
     var username by remember { mutableStateOf("User") }
     val totalCount = habits.size
-    val checkedCount = habits.count {it.isCompletedToday }
+    val checkedCount = habits.count { it.isCompletedToday }
     var completeDialog by remember { mutableStateOf(false) }
     var progress by remember { mutableFloatStateOf(0f) }
 
-
-
-
-    // Load data from Firebase when screen opens
     LaunchedEffect(Unit) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId != null) {
-            // Load username
             FirebaseFirestore.getInstance()
                 .collection("users")
                 .document(userId)
@@ -60,7 +59,6 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                     }
                 }
 
-            // Load habits
             FirebaseFirestore.getInstance()
                 .collection("users")
                 .document(userId)
@@ -77,7 +75,6 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
         }
     }
 
-    // Redirect to login if not authenticated
     if (authState.value is AuthState.Unauthenticated) {
         LaunchedEffect(Unit) {
             navController.navigate("Login_Screen")
@@ -85,10 +82,10 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
     }
 
     val totalHabits = habits.size
-    val completedHabits = habits.count {it.isCompletedToday}
-    progress = if(totalHabits > 0 ) completedHabits.toFloat() / totalHabits else 0f
+    val completedHabits = habits.count { it.isCompletedToday }
+    progress = if (totalHabits > 0) completedHabits.toFloat() / totalHabits else 0f
 
-    if( progress == 1f && !completeDialog){
+    if (progress == 1f && !completeDialog) {
         completeDialog = true
     }
 
@@ -105,7 +102,6 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                 .padding(horizontal = 24.dp)
                 .verticalScroll(scrollState)
         ) {
-            // Profile card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -120,7 +116,6 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                         .padding(21.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Profile icon
                     Box(
                         modifier = Modifier
                             .size(60.dp)
@@ -138,7 +133,6 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
 
                     Spacer(modifier = Modifier.width(16.dp))
 
-                    // User info
                     Column(
                         modifier = Modifier.weight(1f)
                     ) {
@@ -151,12 +145,10 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
 
                         Spacer(modifier = Modifier.height(6.dp))
 
-                        // Level and streak
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Level pill
                             Surface(
                                 shape = RoundedCornerShape(50),
                                 color = colors.accentColor,
@@ -177,7 +169,6 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
 
                             Spacer(modifier = Modifier.width(16.dp))
 
-                            // Streak indicator
                             Text(
                                 text = "0 Day Streak",
                                 fontSize = 12.sp,
@@ -188,7 +179,7 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                     }
                 }
             }
-            //AlertDialog upon 100% progress indicator/all checked from checkbox
+
             if (completeDialog) {
                 AlertDialog(
                     onDismissRequest = { completeDialog = false },
@@ -205,7 +196,6 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                 )
             }
 
-            // Habits card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -219,7 +209,6 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                 ) {
                     Text(text = "Habit Progress", fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
-                    // Progress Bar
                     LinearProgressIndicator(
                         progress = { progress },
                         modifier = Modifier
@@ -233,8 +222,8 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(top = 8.dp)
-
                     )
+
                     Text(
                         text = "Daily Habits",
                         fontWeight = FontWeight.Bold,
@@ -243,7 +232,6 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
-                    // Show message if no habits, otherwise show habit list
                     if (habits.isEmpty()) {
                         Text(
                             "No habits yet. Use the Add Habit button below to create one.",
@@ -251,19 +239,16 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                         )
                     } else {
                         habits.forEachIndexed { index, habit ->
-
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
-                            ){
-
+                            ) {
                                 Checkbox(
                                     checked = habit.isCompletedToday,
                                     onCheckedChange = { isChecked ->
                                         habits[index] = habit.copy(isCompletedToday = isChecked)
 
                                         val userId = FirebaseAuth.getInstance().currentUser?.uid
-
                                         if (userId != null && habit.id.isNotEmpty()) {
                                             FirebaseFirestore.getInstance()
                                                 .collection("users")
@@ -273,22 +258,19 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
                                                 .update("isCompletedToday", isChecked)
                                         }
 
-                                        val checkedCount = habits.count{it.isCompletedToday}
-                                        progress = if(habits.isNotEmpty()) checkedCount.toFloat() / habits.size else 0f
+                                        val checkedNow = habits.count { it.isCompletedToday }
+                                        progress = if (habits.isNotEmpty()) checkedNow.toFloat() / habits.size else 0f
                                     }
                                 )
 
                                 HabitItemWithEdit(
-
                                     habit = habit,
                                     isDarkMode = isDarkMode,
                                     colors = colors,
-                                    navController = navController,
-
+                                    navController = navController
                                 )
                             }
 
-                            // Only add spacing if it's not the last item
                             if (index < habits.size - 1) {
                                 Spacer(modifier = Modifier.height(24.dp))
                             }
@@ -298,7 +280,7 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
             }
         }
 
-        BottomNavigationBar(navController, isDarkMode)
+        BottomNavigationBar(navController = navController, isDarkMode = isDarkMode)
     }
 }
 
@@ -310,28 +292,21 @@ fun HabitItemWithEdit(
     habit: Habit,
     isDarkMode: Boolean,
     colors: AppThemeColors,
-    navController: NavController,
-
+    navController: NavHostController
 ) {
-    var isCompleted by remember { mutableStateOf(habit.isCompletedToday) }
-    val userId = FirebaseAuth.getInstance().currentUser?.uid
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                navController.navigate("Edit_Habit/${habit.id}")
+                navController.navigate("EditHabit_Screen/${habit.id}")
             },
         verticalAlignment = Alignment.Top
     ) {
-
         Spacer(modifier = Modifier.width(24.dp))
 
-        // Habit details
         Column(
             modifier = Modifier.weight(1f)
         ) {
-            // Title
             Text(
                 text = habit.title,
                 fontWeight = FontWeight.Medium,
@@ -339,7 +314,6 @@ fun HabitItemWithEdit(
                 color = colors.textColor
             )
 
-            // Description
             if (habit.description.isNotBlank()) {
                 Text(
                     text = habit.description,
@@ -348,7 +322,6 @@ fun HabitItemWithEdit(
                 )
             }
 
-            // Category
             if (habit.category.isNotBlank()) {
                 Text(
                     text = "Category: ${habit.category}",
@@ -357,14 +330,12 @@ fun HabitItemWithEdit(
                 )
             }
 
-            // Frequency and Goal
             Text(
                 text = "Frequency: ${habit.frequency}, Goal: ${habit.goalCount}",
                 color = colors.secondaryTextColor,
                 fontSize = 12.sp
             )
 
-            // Reminder
             if (!habit.reminderTime.isNullOrBlank()) {
                 Text(
                     text = "Reminder: ${habit.reminderTime}",
@@ -375,4 +346,3 @@ fun HabitItemWithEdit(
         }
     }
 }
-
