@@ -22,19 +22,21 @@ import hexis.habitclash.ui.theme.getAppThemeColors
 
 /**
  * Login screen for user authentication.
- * Allows users to log in with email and password.
+ * Allows users to enter credentials and sign in to the app.
  */
 @Composable
 fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, themeViewModel: ThemeViewModel) {
+    // State variables for input fields
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
+    // Get current authentication state and context
     val authState = authViewModel.authState.observeAsState()
     val context = LocalContext.current
     val isDarkMode = themeViewModel.isDarkMode
     val colors = getAppThemeColors(isDarkMode)
 
-    // Handle authentication state changes
+    // Handle navigation based on auth state
     LaunchedEffect(authState.value) {
         when (authState.value) {
             is AuthState.Authenticated -> navController.navigate("Dashboard_Screen")
@@ -46,6 +48,7 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, them
         }
     }
 
+    // Main layout
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -54,16 +57,16 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, them
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        // Headline using Inter SemiBold font
         Text(
             text = "Login your Account",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleLarge,
             color = colors.textColor
         )
 
         Spacer(modifier = Modifier.height(30.dp))
 
-        // Email field
+        // Email input field
         Text(
             text = "Email:",
             color = colors.secondaryTextColor,
@@ -91,9 +94,9 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, them
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Password field
+        // Password input field
         Text(
-            text = "Pass:",
+            text = "Password:",
             color = colors.secondaryTextColor,
             fontWeight = FontWeight.Normal,
             modifier = Modifier
@@ -103,7 +106,7 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, them
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            placeholder = { Text("Enter your pass", color = colors.secondaryTextColor) },
+            placeholder = { Text("Enter your password", color = colors.secondaryTextColor) },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
@@ -120,12 +123,14 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, them
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            text = "Forgot Pass?",
+        // Forgot password link
+        TextButton(onClick = {
+            navController.navigate("ForgetPassword_Screen")
+        }) {Text(
+            text = "Forgot Password?",
             fontSize = 14.sp,
-            color = colors.secondaryTextColor,
-            modifier = Modifier.align(Alignment.End)
-        )
+            color = colors.secondaryTextColor
+        )}
 
         Spacer(modifier = Modifier.height(24.dp))
 

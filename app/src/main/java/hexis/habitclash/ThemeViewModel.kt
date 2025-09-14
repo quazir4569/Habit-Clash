@@ -6,15 +6,17 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 
 /**
- * Manages app theme state.
- * Tracks and switches between dark and light mode.
+ * Theme ViewModel for managing app theme state.
+ * Handles switching between light and dark mode.
  */
 class ThemeViewModel : ViewModel() {
+    // Current theme state (light or dark mode)
     var isDarkMode by mutableStateOf(false)
         private set
 
     /**
-     * Switches between dark and light mode.
+     * Toggles between light and dark theme.
+     * Updates theme state when called.
      */
     fun toggleTheme() {
         isDarkMode = !isDarkMode

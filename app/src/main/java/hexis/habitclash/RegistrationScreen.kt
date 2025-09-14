@@ -21,15 +21,17 @@ import androidx.navigation.NavController
 import hexis.habitclash.ui.theme.getAppThemeColors
 
 /**
- * Registration screen for creating new user accounts.
- * Collects username, email, and password.
+ * Registration screen for new users.
+ * Collects username, email, and password to create a new account.
  */
 @Composable
 fun RegistrationScreen(navController: NavController, authViewModel: AuthViewModel, themeViewModel: ThemeViewModel) {
+    // State variables for registration fields
     var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
+    // Get authentication state and context
     val authState = authViewModel.authState.observeAsState()
     val context = LocalContext.current
     val isDarkMode = themeViewModel.isDarkMode
@@ -45,6 +47,7 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
         }
     }
 
+    // Main layout
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -53,10 +56,10 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        // Headline using Inter SemiBold font
         Text(
             text = "Create an Account",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleLarge,
             color = colors.textColor
         )
 
@@ -119,7 +122,7 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
 
         // Password field
         Text(
-            text = "Pass:",
+            text = "Password:",
             color = colors.secondaryTextColor,
             fontWeight = FontWeight.Normal,
             modifier = Modifier
@@ -129,7 +132,7 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            placeholder = { Text("Enter your pass", color = colors.secondaryTextColor) },
+            placeholder = { Text("Enter your password", color = colors.secondaryTextColor) },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
@@ -146,8 +149,9 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // Password requirements text
         Text(
-            text = "• Pass must be 6 or more characters",
+            text = "• Password must be 6 or more characters",
             fontSize = 12.sp,
             color = colors.textColor,
             modifier = Modifier.align(Alignment.Start)

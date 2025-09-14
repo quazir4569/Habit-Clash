@@ -3,16 +3,17 @@ package hexis.habitclash.ui.theme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-// Light mode colors
+// App primary color used for accent elements
 val PrimaryBlue = Color(0xFF2563EB)
 
+// Light theme colors
 val LightBackground = Color(0xFFF8FAFC)
 val LightText = Color.Black
 val LightSecondaryText = Color(0xFF7A7A7A)
 val LightFieldContainer = Color.White
 val LightFieldBorder = Color(0xFFCECECE)
 
-// Dark mode colors
+// Dark theme colors
 val DarkBackground = Color(0xFF121212)
 val DarkText = Color.White
 val DarkSecondaryText = Color(0xFFB0B0B0)
@@ -20,8 +21,8 @@ val DarkFieldContainer = Color(0xFF2A2A2A)
 val DarkFieldBorder = Color(0xFF444444)
 
 /**
- * Holds all color values for the theme.
- * Used throughout the app for consistency.
+ * Data class containing all themed colors for the app.
+ * Used to consistently apply colors throughout the app.
  */
 data class AppThemeColors(
     val backgroundColor: Color,
@@ -34,8 +35,8 @@ data class AppThemeColors(
 )
 
 /**
- * Gets the right colors based on dark/light mode.
- * Returns AppThemeColors with all needed colors.
+ * Gets app colors based on current theme.
+ * Returns appropriate color set for light or dark mode.
  */
 @Composable
 fun getAppThemeColors(isDarkMode: Boolean): AppThemeColors {
