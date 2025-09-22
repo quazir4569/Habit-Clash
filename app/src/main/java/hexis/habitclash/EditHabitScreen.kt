@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -16,16 +17,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import hexis.habitclash.ui.theme.AppThemeColors
 import hexis.habitclash.ui.theme.getAppThemeColors
 
 /**
  * Edit Habit Screen for modifying existing habits.
- * Allows users to update habit details or delete habits.
  */
 @Composable
 fun EditHabitScreen(
@@ -33,30 +35,30 @@ fun EditHabitScreen(
     themeViewModel: ThemeViewModel,
     habitId: String
 ) {
-    // Form state variables
+    // form state
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("") }
     var selectedFrequency by remember { mutableStateOf("") }
     var selectedGoalCount by remember { mutableStateOf("") }
 
-    // Dropdown menu states
+    // dropdown expanded state
     var categoryExpanded by remember { mutableStateOf(false) }
     var frequencyExpanded by remember { mutableStateOf(false) }
     var goalCountExpanded by remember { mutableStateOf(false) }
 
-    // Dropdown options
+    // options
     val categories = listOf("Health", "Productivity", "Personal")
     val frequencies = listOf("Daily", "Weekly", "Monthly")
-    val goalCounts = listOf("1", "2", "3")
+    val goalCounts = listOf("1", "2", "3", "4", "5")
 
-    // Context and theme setup
+    // theme + basics
     val context = LocalContext.current
     val isDarkMode = themeViewModel.isDarkMode
     val colors = getAppThemeColors(isDarkMode)
     val scrollState = rememberScrollState()
 
-    // Load habit data from Firebase
+    // fetch existing habit and prefill
     LaunchedEffect(habitId) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId != null && habitId.isNotEmpty()) {
@@ -67,22 +69,18 @@ fun EditHabitScreen(
                 .document(habitId)
                 .get()
                 .addOnSuccessListener { document ->
-                    if (document != null && document.exists()) {
-                        val habit = document.toObject(Habit::class.java)
-                        if (habit != null) {
-                            // Populate form with existing habit data
-                            title = habit.title
-                            description = habit.description
-                            selectedCategory = habit.category
-                            selectedFrequency = habit.frequency
-                            selectedGoalCount = habit.goalCount.toString()
-                        }
+                    val habit = document.toObject(Habit::class.java)
+                    if (habit != null) {
+                        title = habit.title
+                        description = habit.description
+                        selectedCategory = habit.category
+                        selectedFrequency = habit.frequency
+                        selectedGoalCount = habit.goalCount.toString()
                     }
                 }
         }
     }
 
-    // Main layout
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -90,13 +88,12 @@ fun EditHabitScreen(
     ) {
         Spacer(modifier = Modifier.height(52.dp))
 
-        // Content area
         Column(
             modifier = Modifier
                 .weight(1f)
                 .padding(horizontal = 24.dp)
         ) {
-            // Header with back button and title
+            // header row
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -108,8 +105,6 @@ fun EditHabitScreen(
                 ) {
                     Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = colors.textColor)
                 }
-
-                // Screen title with Inter SemiBold font
                 Text(
                     "Edit Habit",
                     style = MaterialTheme.typography.titleLarge,
@@ -118,51 +113,84 @@ fun EditHabitScreen(
                 )
             }
 
-            // Form fields
+            // form body
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(scrollState)
             ) {
-                // Basic input fields
-                FormField("Habit Name", title, onChange = { title = it }, isDarkMode)
-                FormField("Description", description, onChange = { description = it }, isDarkMode)
+                // basic fields
+                FormField(
+                    label = "Habit Name",
+                    value = title,
+                    onChange = { title = it },
+                    isDarkMode = isDarkMode
+                )
+                FormField(
+                    label = "Description",
+                    value = description,
+                    onChange = { description = it },
+                    isDarkMode = isDarkMode,
+                    singleLine = false
+                )
 
-                // Dropdown selectors
-                DropdownField("Category", selectedCategory, categories, categoryExpanded,
+                // dropdowns
+                DropdownField(
+                    label = "Category",
+                    selected = selectedCategory,
+                    options = categories,
+                    expanded = categoryExpanded,
                     onExpandChange = { categoryExpanded = it },
-                    onOptionSelected = { selectedCategory = it; categoryExpanded = false },
-                    isDarkMode)
+                    onOptionSelected = {
+                        selectedCategory = it
+                        categoryExpanded = false
+                    },
+                    isDarkMode = isDarkMode
+                )
 
-                DropdownField("Frequency", selectedFrequency, frequencies, frequencyExpanded,
+                DropdownField(
+                    label = "Frequency",
+                    selected = selectedFrequency,
+                    options = frequencies,
+                    expanded = frequencyExpanded,
                     onExpandChange = { frequencyExpanded = it },
-                    onOptionSelected = { selectedFrequency = it; frequencyExpanded = false },
-                    isDarkMode)
+                    onOptionSelected = {
+                        selectedFrequency = it
+                        frequencyExpanded = false
+                    },
+                    isDarkMode = isDarkMode
+                )
 
-                DropdownField("Goal Count", selectedGoalCount, goalCounts, goalCountExpanded,
+                DropdownField(
+                    label = "Goal Count",
+                    selected = selectedGoalCount,
+                    options = goalCounts,
+                    expanded = goalCountExpanded,
                     onExpandChange = { goalCountExpanded = it },
-                    onOptionSelected = { selectedGoalCount = it; goalCountExpanded = false },
-                    isDarkMode)
+                    onOptionSelected = {
+                        selectedGoalCount = it
+                        goalCountExpanded = false
+                    },
+                    isDarkMode = isDarkMode
+                )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Update button
+                // save
                 Button(
                     onClick = {
-                        // Update habit in Firebase
                         val userId = FirebaseAuth.getInstance().currentUser?.uid
                         if (userId != null && title.isNotBlank()) {
-                            val db = FirebaseFirestore.getInstance()
+                            val updates = hashMapOf<String, Any>(
+                                "title" to title,
+                                "description" to description,
+                                "category" to selectedCategory,
+                                "frequency" to selectedFrequency,
+                                "goalCount" to (selectedGoalCount.toIntOrNull() ?: 1)
+                            )
 
-                            // Create update map
-                            val updates = hashMapOf<String, Any>()
-                            updates["title"] = title
-                            updates["description"] = description
-                            updates["category"] = selectedCategory
-                            updates["frequency"] = selectedFrequency
-                            updates["goalCount"] = selectedGoalCount.toIntOrNull() ?: 1
-
-                            db.collection("users")
+                            FirebaseFirestore.getInstance()
+                                .collection("users")
                                 .document(userId)
                                 .collection("habits")
                                 .document(habitId)
@@ -190,10 +218,9 @@ fun EditHabitScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Delete button
+                // delete
                 Button(
                     onClick = {
-                        // Delete habit from Firebase
                         val userId = FirebaseAuth.getInstance().currentUser?.uid
                         if (userId != null) {
                             FirebaseFirestore.getInstance()
@@ -225,7 +252,96 @@ fun EditHabitScreen(
             }
         }
 
-        // Bottom navigation
+        // bottom nav stays the same
         BottomNavigationBar(navController, isDarkMode)
+    }
+}
+
+
+@Composable
+private fun FormField(
+    label: String,
+    value: String,
+    onChange: (String) -> Unit,
+    isDarkMode: Boolean,
+    singleLine: Boolean = true
+) {
+    val colors = getAppThemeColors(isDarkMode)
+    Column(modifier = Modifier.padding(bottom = 16.dp)) {
+        Text(text = label, color = colors.secondaryTextColor, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        OutlinedTextField(
+            value = value,
+            onValueChange = onChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = if (singleLine) 0.dp else 100.dp),
+            singleLine = singleLine,
+            shape = RoundedCornerShape(18.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = colors.accentColor,
+                unfocusedBorderColor = colors.fieldBorderColor,
+                focusedContainerColor = colors.fieldContainerColor,
+                unfocusedContainerColor = colors.fieldContainerColor,
+                focusedTextColor = colors.textColor,
+                unfocusedTextColor = colors.textColor
+            ),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+            placeholder = { Text("Enter $label", color = colors.secondaryTextColor) }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DropdownField(
+    label: String,
+    selected: String,
+    options: List<String>,
+    expanded: Boolean,
+    onExpandChange: (Boolean) -> Unit,
+    onOptionSelected: (String) -> Unit,
+    isDarkMode: Boolean
+) {
+    val colors = getAppThemeColors(isDarkMode)
+
+    Column(modifier = Modifier.padding(bottom = 16.dp)) {
+        Text(text = label, color = colors.secondaryTextColor, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = onExpandChange
+        ) {
+            OutlinedTextField(
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth(),
+                value = selected,
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                shape = RoundedCornerShape(18.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = colors.accentColor,
+                    unfocusedBorderColor = colors.fieldBorderColor,
+                    focusedContainerColor = colors.fieldContainerColor,
+                    unfocusedContainerColor = colors.fieldContainerColor,
+                    focusedTextColor = colors.textColor,
+                    unfocusedTextColor = colors.textColor
+                ),
+                placeholder = { Text("Choose $label", color = colors.secondaryTextColor) }
+            )
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { onExpandChange(false) }
+            ) {
+                options.forEach { opt ->
+                    DropdownMenuItem(
+                        text = { Text(opt) },
+                        onClick = { onOptionSelected(opt) }
+                    )
+                }
+            }
+        }
     }
 }

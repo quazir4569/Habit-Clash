@@ -18,33 +18,35 @@ fun NavigationApp(
 
     NavHost(
         navController = navController,
-        startDestination = "Login_Screen"
+        startDestination = "Login_Screen",
+        modifier = modifier
     ) {
         composable("Login_Screen") {
             LoginScreen(navController, authViewModel, themeViewModel)
         }
-        composable("Registration_Screen") {
-            RegistrationScreen(navController, authViewModel, themeViewModel)
-        }
+
         composable("Dashboard_Screen") {
             DashboardScreen(navController, authViewModel, themeViewModel)
         }
+
         composable("AddHabit_Screen") {
-            AddHabitScreen(navController = navController, themeViewModel = themeViewModel)
+            AddHabitScreen(navController, themeViewModel)
         }
+
         composable(
-            route = "EditHabit_Screen/{habitId}",
+            route = "Edit_Habit/{habitId}",
             arguments = listOf(navArgument("habitId") { type = NavType.StringType })
         ) { backStackEntry ->
             val habitId = backStackEntry.arguments?.getString("habitId") ?: ""
-            EditHabitScreen(
-                navController = navController,
-                themeViewModel = themeViewModel,
-                habitId = habitId
-            )
+            EditHabitScreen(navController, themeViewModel, habitId)
         }
+
         composable("Settings_Screen") {
             SettingsScreen(navController, authViewModel, themeViewModel)
+        }
+
+        composable("Analytics_Screen") {
+            AnalyticsScreen(navController, themeViewModel)
         }
     }
 }
