@@ -19,19 +19,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHostController
+import androidx.navigation.NavController
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import hexis.habitclash.ui.theme.AppThemeColors
 import hexis.habitclash.ui.theme.getAppThemeColors
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+import java.util.TimeZone
 
-/**
- * Main dashboard screen showing user's habits.
- * Loads habits from Firebase and displays them in a list.
- */
 @Composable
 fun DashboardScreen(
-    navController: NavHostController,
+    navController: NavController,
     authViewModel: AuthViewModel,
     themeViewModel: ThemeViewModel
 ) {
@@ -40,54 +42,67 @@ fun DashboardScreen(
     val isDarkMode = themeViewModel.isDarkMode
     val colors = getAppThemeColors(isDarkMode)
     val scrollState = rememberScrollState()
+
     var username by remember { mutableStateOf("User") }
-    val totalCount = habits.size
-    val checkedCount = habits.count { it.isCompletedToday }
-    var completeDialog by remember { mutableStateOf(false) }
-    var progress by remember { mutableFloatStateOf(0f) }
 
+    // window keys so UI knows what counts as “done”
+    val todayKey = remember { dayKeyUtc() }
+    val weekKey = remember { weekKeyUtc() }
+    val monthKey = remember { monthKeyUtc() }
+
+    // completion flags
+    val doneMap = remember { mutableStateMapOf<String, Boolean>() }
+
+    // load user + habits
     LaunchedEffect(Unit) {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
-        if (userId != null) {
-            FirebaseFirestore.getInstance()
-                .collection("users")
-                .document(userId)
-                .get()
-                .addOnSuccessListener { document ->
-                    if (document != null && document.exists()) {
-                        username = document.getString("username") ?: "User"
-                    }
-                }
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@LaunchedEffect
+        val db = FirebaseFirestore.getInstance()
 
-            FirebaseFirestore.getInstance()
-                .collection("users")
-                .document(userId)
-                .collection("habits")
-                .addSnapshotListener { snapshot, error ->
-                    if (error == null && snapshot != null) {
-                        habits.clear()
-                        for (doc in snapshot.documents) {
-                            val habit = doc.toObject(Habit::class.java)?.copy(id = doc.id)
-                            if (habit != null) habits.add(habit)
-                        }
+        db.collection("users").document(uid).get()
+            .addOnSuccessListener { d -> username = d.getString("username") ?: "User" }
+
+        db.collection("users").document(uid)
+            .collection("habits")
+            .addSnapshotListener { snap, err ->
+                if (err == null && snap != null) {
+                    habits.clear()
+                    for (doc in snap.documents) {
+                        doc.toObject(Habit::class.java)?.copy(id = doc.id)?.let { habits += it }
                     }
                 }
-        }
+            }
+
+        // listen to completion logs for the three windows we care about
+        db.collection("users").document(uid)
+            .collection("completion_logs")
+            .whereIn("dateKey", listOf(todayKey, weekKey, monthKey))
+            .addSnapshotListener { snap, err ->
+                if (err == null && snap != null) {
+                    // rebuild map on every change
+                    doneMap.clear()
+                    for (doc in snap.documents) {
+                        val habitId = doc.getString("habitId") ?: continue
+                        val dateKey = doc.getString("dateKey") ?: continue
+                        val completed = doc.getBoolean("completed") == true
+                        doneMap["${habitId}_${dateKey}"] = completed
+                    }
+                }
+            }
     }
 
-    if (authState.value is AuthState.Unauthenticated) {
-        LaunchedEffect(Unit) {
+    // redirect to login if needed
+    LaunchedEffect(authState.value) {
+        if (authState.value is AuthState.Unauthenticated) {
             navController.navigate("Login_Screen")
         }
     }
 
-    val totalHabits = habits.size
-    val completedHabits = habits.count { it.isCompletedToday }
-    progress = if (totalHabits > 0) completedHabits.toFloat() / totalHabits else 0f
-
-    if (progress == 1f && !completeDialog) {
-        completeDialog = true
+    val totalToday = habits.count { it.frequency.equals("Daily", ignoreCase = true) } // only daily target for the day
+    val completedToday = habits.count {
+        it.frequency.equals("Daily", ignoreCase = true) &&
+                (doneMap["${it.id}_${todayKey}"] ?: false)
     }
+    val progress = if (totalToday > 0) completedToday.toFloat() / totalToday else 0f
 
     Column(
         modifier = Modifier
@@ -133,22 +148,15 @@ fun DashboardScreen(
 
                     Spacer(modifier = Modifier.width(16.dp))
 
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Hello, @$username",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = colors.textColor
                         )
-
                         Spacer(modifier = Modifier.height(6.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
                                 shape = RoundedCornerShape(50),
                                 color = colors.accentColor,
@@ -166,9 +174,7 @@ fun DashboardScreen(
                                     )
                                 }
                             }
-
                             Spacer(modifier = Modifier.width(16.dp))
-
                             Text(
                                 text = "0 Day Streak",
                                 fontSize = 12.sp,
@@ -178,22 +184,6 @@ fun DashboardScreen(
                         }
                     }
                 }
-            }
-
-            if (completeDialog) {
-                AlertDialog(
-                    onDismissRequest = { completeDialog = false },
-                    title = { Text("Congratulation!") },
-                    text = { Text("You finished your daily habits!") },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            completeDialog = false
-                            navController.popBackStack()
-                        }) {
-                            Text("Lets Go back!")
-                        }
-                    }
-                )
             }
 
             Card(
@@ -207,29 +197,30 @@ fun DashboardScreen(
                         .fillMaxWidth()
                         .padding(20.dp)
                 ) {
-                    Text(text = "Habit Progress", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text(text = "Habit Progress", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = colors.textColor)
 
                     LinearProgressIndicator(
                         progress = { progress },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 10.dp),
-                        color = Color.Blue,
+                        color = colors.accentColor,
                     )
 
                     Text(
-                        text = "$checkedCount of $totalCount tasks completed ${"%.0f".format(progress * 100)}%",
+                        text = "$completedToday of $totalToday tasks completed ${"%.0f".format(progress * 100)}%",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Medium,
+                        color = colors.textColor,
                         modifier = Modifier.padding(top = 8.dp)
                     )
 
                     Text(
-                        text = "Daily Habits",
+                        text = "Your Habits",
                         fontWeight = FontWeight.Bold,
                         fontSize = 19.sp,
                         color = colors.textColor,
-                        modifier = Modifier.padding(bottom = 16.dp)
+                        modifier = Modifier.padding(top = 12.dp, bottom = 12.dp)
                     )
 
                     if (habits.isEmpty()) {
@@ -243,23 +234,24 @@ fun DashboardScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                val windowKey = when (habit.frequency.lowercase(Locale.US)) {
+                                    "daily" -> todayKey
+                                    "weekly" -> weekKey
+                                    "monthly" -> monthKey
+                                    else -> todayKey
+                                }
+                                val key = "${habit.id}_${windowKey}"
+                                val isChecked = doneMap[key] ?: false
+
                                 Checkbox(
-                                    checked = habit.isCompletedToday,
-                                    onCheckedChange = { isChecked ->
-                                        habits[index] = habit.copy(isCompletedToday = isChecked)
-
-                                        val userId = FirebaseAuth.getInstance().currentUser?.uid
-                                        if (userId != null && habit.id.isNotEmpty()) {
-                                            FirebaseFirestore.getInstance()
-                                                .collection("users")
-                                                .document(userId)
-                                                .collection("habits")
-                                                .document(habit.id)
-                                                .update("isCompletedToday", isChecked)
-                                        }
-
-                                        val checkedNow = habits.count { it.isCompletedToday }
-                                        progress = if (habits.isNotEmpty()) checkedNow.toFloat() / habits.size else 0f
+                                    checked = isChecked,
+                                    onCheckedChange = { checked ->
+                                        toggleCompletion(
+                                            navController = navController,
+                                            habit = habit,
+                                            windowKey = windowKey,
+                                            checked = checked
+                                        )
                                     }
                                 )
 
@@ -280,69 +272,97 @@ fun DashboardScreen(
             }
         }
 
-        BottomNavigationBar(navController = navController, isDarkMode = isDarkMode)
+        BottomNavigationBar(navController, isDarkMode)
     }
 }
 
-/**
- * Displays a habit item with ability to toggle completion and navigate to edit screen.
- */
 @Composable
 fun HabitItemWithEdit(
     habit: Habit,
     isDarkMode: Boolean,
     colors: AppThemeColors,
-    navController: NavHostController
+    navController: NavController,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable {
-                navController.navigate("EditHabit_Screen/${habit.id}")
-            },
+            .clickable { navController.navigate("Edit_Habit/${habit.id}") },
         verticalAlignment = Alignment.Top
     ) {
         Spacer(modifier = Modifier.width(24.dp))
 
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = habit.title,
-                fontWeight = FontWeight.Medium,
-                fontSize = 14.sp,
-                color = colors.textColor
-            )
-
+        Column(modifier = Modifier.weight(1f)) {
+            Text(habit.title, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = colors.textColor)
             if (habit.description.isNotBlank()) {
-                Text(
-                    text = habit.description,
-                    color = colors.secondaryTextColor,
-                    fontSize = 12.sp
-                )
+                Text(habit.description, color = colors.secondaryTextColor, fontSize = 12.sp)
             }
-
             if (habit.category.isNotBlank()) {
-                Text(
-                    text = "Category: ${habit.category}",
-                    color = colors.secondaryTextColor,
-                    fontSize = 12.sp
-                )
+                Text("Category: ${habit.category}", color = colors.secondaryTextColor, fontSize = 12.sp)
             }
-
-            Text(
-                text = "Frequency: ${habit.frequency}, Goal: ${habit.goalCount}",
-                color = colors.secondaryTextColor,
-                fontSize = 12.sp
-            )
-
-            if (!habit.reminderTime.isNullOrBlank()) {
-                Text(
-                    text = "Reminder: ${habit.reminderTime}",
-                    color = colors.secondaryTextColor,
-                    fontSize = 12.sp
-                )
+            Text("Frequency: ${habit.frequency}, Goal: ${habit.goalCount}", color = colors.secondaryTextColor, fontSize = 12.sp)
+            habit.reminderTime?.takeIf { it.isNotBlank() }?.let {
+                Text("Reminder: $it", color = colors.secondaryTextColor, fontSize = 12.sp)
             }
         }
     }
+}
+
+private fun toggleCompletion(
+    navController: NavController,
+    habit: Habit,
+    windowKey: String,
+    checked: Boolean
+) {
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+    val db = FirebaseFirestore.getInstance()
+    val docId = "${habit.id}_$windowKey"
+    val ref = db.collection("users").document(uid)
+        .collection("completion_logs").document(docId)
+
+    if (checked) {
+        val data = hashMapOf(
+            "habitId" to habit.id,
+            "userId" to uid,
+            "dateKey" to windowKey,
+            "frequency" to habit.frequency,
+            "completed" to true,
+            "updatedAt" to Timestamp.now()
+        )
+        ref.set(data)
+    } else {
+        // uncheck removes the record for that window
+        ref.delete().addOnFailureListener {
+            // if delete fails, it will mark as not completed
+            ref.set(
+                mapOf(
+                    "habitId" to habit.id,
+                    "userId" to uid,
+                    "dateKey" to windowKey,
+                    "frequency" to habit.frequency,
+                    "completed" to false,
+                    "updatedAt" to FieldValue.serverTimestamp()
+                )
+            )
+        }
+    }
+}
+
+private fun dayKeyUtc(dateMillis: Long = System.currentTimeMillis()): String {
+    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+    sdf.timeZone = TimeZone.getTimeZone("UTC")
+    return sdf.format(dateMillis)
+}
+
+private fun weekKeyUtc(dateMillis: Long = System.currentTimeMillis()): String {
+    val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"), Locale.US)
+    cal.timeInMillis = dateMillis
+    val year = cal.get(Calendar.YEAR)
+    val week = cal.get(Calendar.WEEK_OF_YEAR)
+    return String.format(Locale.US, "%04d-W%02d", year, week)
+}
+
+private fun monthKeyUtc(dateMillis: Long = System.currentTimeMillis()): String {
+    val sdf = SimpleDateFormat("yyyy-MM", Locale.US)
+    sdf.timeZone = TimeZone.getTimeZone("UTC")
+    return sdf.format(dateMillis)
 }

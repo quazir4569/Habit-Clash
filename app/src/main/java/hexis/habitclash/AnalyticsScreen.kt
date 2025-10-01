@@ -3,408 +3,394 @@ package hexis.habitclash
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import hexis.habitclash.ui.theme.AppThemeColors
 import hexis.habitclash.ui.theme.getAppThemeColors
-import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import kotlin.math.max
-import kotlin.math.min
 
-// one completion row from Firestore
-data class CompletionLog(
-    val habitId: String = "",
-    val completedAt: Timestamp = Timestamp.now(),
-    val dateKey: String = "" // "YYYY-MM-DD" in UTC
-)
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalyticsScreen(
     navController: NavController,
     themeViewModel: ThemeViewModel
 ) {
-    val isDarkMode = themeViewModel.isDarkMode
-    val colors = getAppThemeColors(isDarkMode)
-    val scroll = rememberScrollState()
+    val isDark = themeViewModel.isDarkMode
+    val colors = getAppThemeColors(isDark)
 
-    var loading by remember { mutableStateOf(true) }
-    var logs by remember { mutableStateOf(listOf<CompletionLog>()) }
+    // basic numbers for summary
+    var habitsCount by remember { mutableStateOf(0) }
+    var dailyCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
 
-    // load recent completions when we land here
+    // recent completions list (state list so LazyColumn reacts)
+    val recent = remember { mutableStateListOf<CompletionRow>() }
+
+    // pull logs for the last 14 days
     LaunchedEffect(Unit) {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid
-        if (uid != null) {
-            logs = loadCompletions(uid)
-        }
-        loading = false
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@LaunchedEffect
+        val db = FirebaseFirestore.getInstance()
+
+        // count how many habits exist (for today's %)
+        db.collection("users").document(uid)
+            .collection("habits")
+            .get()
+            .addOnSuccessListener { snap ->
+                habitsCount = snap.size()
+            }
+
+        // preset 14 days so the chart never looks empty
+        val keys = lastNDatesKeys(14)
+        val counts = keys.associateWith { 0 }.toMutableMap()
+        val recentsTmp = mutableListOf<CompletionRow>()
+
+        db.collection("users").document(uid)
+            .collection("completion_logs")
+            .get()
+            .addOnSuccessListener { snap ->
+                snap.documents.forEach { d ->
+                    val dateKey = d.getString("dateKey") ?: return@forEach
+                    val completed = d.getBoolean("completed") == true
+                    val habitId = d.getString("habitId") ?: "unknown"
+                    val updatedAt = (d.getTimestamp("updatedAt")?.toDate()) ?: Date()
+
+                    if (completed && counts.containsKey(dateKey)) {
+                        counts[dateKey] = (counts[dateKey] ?: 0) + 1
+                    }
+                    if (completed) {
+                        recentsTmp += CompletionRow(
+                            dateKey = dateKey,
+                            habitId = habitId,
+                            whenText = prettyWhen(updatedAt)
+                        )
+                    }
+                }
+
+                // keep days in order
+                dailyCounts = counts.toList().sortedBy { it.first }.toMap()
+
+                // newest first for the feed
+                recentsTmp.sortByDescending { it.dateKey }
+                recent.clear()
+                recent.addAll(recentsTmp.take(25))
+            }
     }
 
-    // build date windows as "yyyy-MM-dd" strings
-    val todayKey = remember { utcKey(Date()) }
-    val last14Keys = remember {
-        buildKeys(daysBack = 14) // 14 keys including today
-    }
-    val last7Keys = remember { buildKeys(daysBack = 7) }
-    val last30Keys = remember { buildKeys(daysBack = 30) }
+    val todayKey = utcDayKey()
+    val todayDone = dailyCounts[todayKey] ?: 0
+    val todayPct = if (habitsCount > 0) (todayDone.toFloat() / habitsCount).coerceIn(0f, 1f) else 0f
 
-    // group logs by dateKey for quick lookups
-    val logsByDate: Map<String, List<CompletionLog>> = remember(logs) {
-        logs.groupBy { it.dateKey }
-    }
-
-    // line series: number of completions per day for last 14 days
-    val series14 = last14Keys.map { key -> (logsByDate[key]?.size ?: 0).toFloat() }
-
-    // completion rate windows
-    val completionAnyLast7 = last7Keys.count { !logsByDate[it].isNullOrEmpty() }
-    val completionAnyLast30 = last30Keys.count { !logsByDate[it].isNullOrEmpty() }
-    val pct7 = if (last7Keys.isNotEmpty()) completionAnyLast7 * 100f / last7Keys.size else 0f
-    val pct30 = if (last30Keys.isNotEmpty()) completionAnyLast30 * 100f / last30Keys.size else 0f
-
-    // show most recent 10 completions
-    val recent = logs.sortedByDescending { it.completedAt.toDate().time }.take(10)
+    // quick streak: count consecutive days from today with > 0 completions
+    val streak = remember(dailyCounts) { calcStreak(dailyCounts) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(colors.backgroundColor)
     ) {
-        TopBar(colors, navController)
+        // simple top bar so users can go back
+        TopAppBar(
+            title = { Text("Analytics", color = colors.textColor, fontWeight = FontWeight.SemiBold) },
+            navigationIcon = {
+                IconButton(onClick = { navController.popBackStack() }) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = colors.textColor)
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.cardColor)
+        )
 
-        if (loading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            return
-        }
+        Spacer(Modifier.height(8.dp))
 
-        Column(
+        // today's summary
+        Card(
             modifier = Modifier
-                .weight(1f)
-                .verticalScroll(scroll)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 16.dp)
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = colors.cardColor)
         ) {
-           // Line Chart
-            SectionCard(colors) {
-                Text("Streak & Trends", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = colors.textColor)
-                Spacer(Modifier.height(12.dp))
-                LineChart(
-                    values = series14,
-                    labels = last14Keys.map { key -> dayOfMonthFromKey(key) },
-                    colors = colors,
-                    height = 160.dp
+            Column(Modifier.padding(16.dp)) {
+                Text("Today", color = colors.secondaryTextColor)
+                Spacer(Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = { todayPct },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp),
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Last 14 days (number of completions per day)",
-                    color = colors.secondaryTextColor,
-                    fontSize = 12.sp
+                    "${(todayPct * 100).toInt()}% • $todayDone / $habitsCount completed",
+                    color = colors.textColor
                 )
+                Spacer(Modifier.height(6.dp))
+                Text("Current streak: $streak day(s)", color = colors.textColor)
             }
+        }
 
+        Spacer(Modifier.height(16.dp))
 
-            SectionCard(colors) {
-                Text("Completion Rate", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = colors.textColor)
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    StatPill(title = "7 days", value = "${"%.0f".format(pct7)}%", colors = colors)
-                    StatPill(title = "30 days", value = "${"%.0f".format(pct30)}%", colors = colors)
-                }
-                Spacer(Modifier.height(12.dp))
+        // charts + recent list
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 16.dp)
+        ) {
+            ChartCard(title = "Last 14 Days (Completed per day)", colors = colors) {
                 BarChart(
-                    values = last7Keys.map { key -> if (logsByDate[key].isNullOrEmpty()) 0f else 1f },
-                    labels = last7Keys,
-                    colors = colors,
-                    height = 120.dp
+                    labels = dailyCounts.keys.toList().map { it.takeLast(5) },
+                    values = dailyCounts.values.toList(),
+                    barColor = colors.accentColor,
+                    axisColor = if (isDark) Color(0x55FFFFFF) else Color(0x33000000)
                 )
-                Spacer(Modifier.height(4.dp))
-                Text("Last 7 days (any completion counts as 1)", color = colors.secondaryTextColor, fontSize = 12.sp)
             }
 
-            // Recent Activities List
-            SectionCard(colors) {
-                Text("Recent Activity", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = colors.textColor)
-                Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
+
+            ChartCard(title = "Trend (Last 14 Days)", colors = colors) {
+                LineChart(
+                    values = dailyCounts.values.toList(),
+                    lineColor = colors.accentColor,
+                    axisColor = if (isDark) Color(0x55FFFFFF) else Color(0x33000000)
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            ChartCard(title = "Recent Activity", colors = colors) {
                 if (recent.isEmpty()) {
-                    Text("No recent completions yet.", color = colors.secondaryTextColor)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(72.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No recent completions yet.", color = colors.secondaryTextColor)
+                    }
                 } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        recent.forEach { item ->
-                            // format timestamp as yyyy-MM-dd (UTC)
-                            val whenKey = utcKey(item.completedAt.toDate())
-                            ActivityRow(
-                                title = "Habit ${item.habitId.take(8)}…",
-                                subtitle = whenKey,
-                                colors = colors
-                            )
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(recent) { r ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    r.dateKey.takeLast(5),
+                                    color = colors.secondaryTextColor,
+                                    modifier = Modifier.width(56.dp)
+                                )
+                                Text(
+                                    "Completed • ${r.habitId}",
+                                    color = colors.textColor,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(r.whenText, color = colors.secondaryTextColor)
+                            }
                         }
                     }
                 }
             }
-
-            Spacer(Modifier.height(8.dp))
         }
 
-        BottomNavigationBar(navController, isDarkMode)
+        // bottom nav to leave the page easily
+        BottomNavigationBar(navController, isDark)
     }
 }
 
+/* simple list item model for the recent feed */
+data class CompletionRow(
+    val dateKey: String,
+    val habitId: String,
+    val whenText: String
+)
 
-// fetches latest completion docs for the user
-private suspend fun loadCompletions(uid: String): List<CompletionLog> {
-    val db = FirebaseFirestore.getInstance()
-    val snap = db.collection("users")
-        .document(uid)
-        .collection("habit_completions")
-        .orderBy("completedAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
-        .limit(120)
-        .get()
-        .await()
-
-    return snap.documents.mapNotNull { doc ->
-        val habitId = doc.getString("habitId") ?: return@mapNotNull null
-        val ts = doc.getTimestamp("completedAt") ?: Timestamp.now()
-        val dateKey = doc.getString("dateKey") ?: utcKey(ts.toDate())
-        CompletionLog(habitId = habitId, completedAt = ts, dateKey = dateKey)
-    }
-}
-
-
-// simple top bar with back arrow
+/* small titled container used by charts + list */
 @Composable
-private fun TopBar(colors: AppThemeColors, navController: NavController) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp, start = 8.dp, end = 8.dp, bottom = 8.dp)
-    ) {
-        IconButton(
-            onClick = { navController.popBackStack() },
-            modifier = Modifier.align(Alignment.CenterStart)
-        ) {
-            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = colors.textColor)
-        }
-        Row(
-            modifier = Modifier.align(Alignment.Center),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Analytics", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = colors.textColor)
-        }
-    }
-}
-
-// card wrapper per section
-@Composable
-private fun SectionCard(
-    colors: AppThemeColors,
+private fun ChartCard(
+    title: String,
+    colors: hexis.habitclash.ui.theme.AppThemeColors,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = colors.cardColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        shape = RoundedCornerShape(16.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(Modifier.padding(16.dp)) {
+            Text(title, color = colors.textColor, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(12.dp))
             content()
         }
     }
 }
 
-@Composable
-private fun StatPill(title: String, value: String, colors: AppThemeColors) {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = colors.fieldContainerColor,
-        tonalElevation = 1.dp
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-            Text(value, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = colors.textColor)
-            Text(title, fontSize = 12.sp, color = colors.secondaryTextColor)
-        }
-    }
-}
-
-// one row for recent activity
-@Composable
-private fun ActivityRow(title: String, subtitle: String, colors: AppThemeColors) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(10.dp)
-                .background(colors.accentColor, RoundedCornerShape(50))
-        )
-        Spacer(Modifier.width(10.dp))
-        Column {
-            Text(title, color = colors.textColor, fontWeight = FontWeight.Medium, fontSize = 14.sp)
-            Text(subtitle, color = colors.secondaryTextColor, fontSize = 12.sp)
-        }
-    }
-}
-
-
-// simple line chart for last 14 days
-@Composable
-private fun LineChart(
-    values: List<Float>,
-    labels: List<String>,
-    colors: AppThemeColors,
-    height: androidx.compose.ui.unit.Dp
-) {
-    val maxVal = max(1f, values.maxOrNull() ?: 1f)
-    val minVal = min(0f, values.minOrNull() ?: 0f)
-    val range = max(1f, maxVal - minVal)
-
-    Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(height)
-    ) {
-        if (values.isEmpty()) return@Canvas
-
-        val w = size.width
-        val h = size.height
-        val stepX = if (values.size > 1) w / (values.size - 1) else w
-
-        // faint grid for readability
-        val gridYCount = 4
-        repeat(gridYCount + 1) { i ->
-            val y = h * (i / gridYCount.toFloat())
-            drawLine(
-                color = colors.fieldBorderColor,
-                start = Offset(0f, y),
-                end = Offset(w, y),
-                strokeWidth = 1f
-            )
-        }
-
-        // connect points
-        val path = Path()
-        values.forEachIndexed { idx, v ->
-            val x = stepX * idx
-            val norm = if (range == 0f) 0f else (v - minVal) / range
-            val y = h - (norm * h)
-            if (idx == 0) path.moveTo(x, y) else path.lineTo(x, y)
-        }
-
-        drawPath(
-            path = path,
-            color = colors.accentColor,
-            style = Stroke(width = 6f, cap = StrokeCap.Round)
-        )
-
-        // dot markers
-        values.forEachIndexed { idx, v ->
-            val x = stepX * idx
-            val norm = if (range == 0f) 0f else (v - minVal) / range
-            val y = h - (norm * h)
-            drawCircle(
-                color = colors.accentColor,
-                radius = 6f,
-                center = Offset(x, y)
-            )
-        }
-    }
-}
-
-// 7-day bars
+/* compact bar chart using Canvas (keeps dependencies light) */
 @Composable
 private fun BarChart(
-    values: List<Float>,
     labels: List<String>,
-    colors: AppThemeColors,
-    height: androidx.compose.ui.unit.Dp
+    values: List<Int>,
+    barColor: Color,
+    axisColor: Color,
+    modifier: Modifier = Modifier
+        .fillMaxWidth()
+        .height(180.dp)
 ) {
-    val maxVal = max(1f, values.maxOrNull() ?: 1f)
+    val maxVal = max(values.maxOrNull() ?: 0, 1)
+    val barCount = values.size.coerceAtLeast(1)
 
-    Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(height)
-    ) {
-        if (values.isEmpty()) return@Canvas
+    Column(modifier) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
 
-        val barCount = values.size
-        val w = size.width
-        val h = size.height
-        val barW = w / (barCount * 1.6f) // spacing
-        val step = w / barCount
+            // axes
+            drawLine(axisColor, Offset(0f, h - 1f), Offset(w, h - 1f), strokeWidth = 2f)
+            drawLine(axisColor, Offset(1f, 0f), Offset(1f, h), strokeWidth = 2f)
 
-        // baseline
-        drawLine(
-            color = colors.fieldBorderColor,
-            start = Offset(0f, h - 2f),
-            end = Offset(w, h - 2f),
-            strokeWidth = 2f
-        )
+            val gap = w * 0.02f
+            val barW = (w - gap * (barCount + 1)) / barCount
 
-        values.forEachIndexed { idx, v ->
-            val xCenter = step * idx + step / 2f
-            val barH = if (maxVal == 0f) 0f else (v / maxVal) * (h * 0.9f)
-            drawRoundRect(
-                color = colors.accentColor,
-                topLeft = Offset(xCenter - barW / 2f, h - barH),
-                size = androidx.compose.ui.geometry.Size(barW, barH),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(12f, 12f)
-            )
+            values.forEachIndexed { i, v ->
+                val x = gap + i * (barW + gap)
+                val frac = v.toFloat() / maxVal
+                val barH = (h - 8f) * frac
+                drawRoundRect(
+                    color = barColor,
+                    topLeft = Offset(x, h - barH),
+                    size = Size(barW, barH),
+                    cornerRadius = CornerRadius(8f, 8f)
+                )
+            }
+        }
+
+        // three tick labels to avoid crowding
+        if (labels.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                labels.firstOrNull()?.let { Text(it, style = MaterialTheme.typography.labelSmall) }
+                labels.getOrNull(labels.lastIndex / 2)?.let { Text(it, style = MaterialTheme.typography.labelSmall) }
+                labels.lastOrNull()?.let { Text(it, style = MaterialTheme.typography.labelSmall) }
+            }
         }
     }
 }
 
+/* tiny line chart for a quick trend view */
+@Composable
+private fun LineChart(
+    values: List<Int>,
+    lineColor: Color,
+    axisColor: Color,
+    modifier: Modifier = Modifier
+        .fillMaxWidth()
+        .height(180.dp)
+) {
+    val data = if (values.isEmpty()) listOf(0) else values
+    val maxVal = max(data.maxOrNull() ?: 0, 1)
 
-private val utcFormatter by lazy {
-    SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
-        timeZone = TimeZone.getTimeZone("UTC")
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+
+        // axes
+        drawLine(axisColor, Offset(0f, h - 1f), Offset(w, h - 1f), strokeWidth = 2f)
+        drawLine(axisColor, Offset(1f, 0f), Offset(1f, h), strokeWidth = 2f)
+
+        val stepX = if (data.size > 1) (w / (data.size - 1)) else 0f
+        val pts = data.mapIndexed { i, v ->
+            val frac = v.toFloat() / maxVal
+            Offset(i * stepX, h - (h - 8f) * frac)
+        }
+
+        if (pts.size >= 2) {
+            val path = Path().apply {
+                moveTo(pts.first().x, pts.first().y)
+                for (i in 1 until pts.size) lineTo(pts[i].x, pts[i].y)
+            }
+            drawPath(
+                path = path,
+                color = lineColor,
+                style = Stroke(width = 6f, cap = StrokeCap.Round)
+            )
+        } else {
+            drawCircle(color = lineColor, radius = 6f, center = pts.first())
+        }
     }
 }
 
-private fun utcKey(date: Date): String = utcFormatter.format(date)
+/* count consecutive days with > 0 completions, starting today */
+private fun calcStreak(daily: Map<String, Int>): Int {
+    if (daily.isEmpty()) return 0
+    val ordered = daily.toList().sortedBy { it.first } // oldest -> newest
+    val today = utcDayKey()
+    val idx = ordered.indexOfFirst { it.first == today }
+    if (idx == -1) return 0
 
-private fun buildKeys(daysBack: Int): List<String> {
-    val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"), Locale.US)
-    cal.set(Calendar.HOUR_OF_DAY, 0)
-    cal.set(Calendar.MINUTE, 0)
-    cal.set(Calendar.SECOND, 0)
-    cal.set(Calendar.MILLISECOND, 0)
-
-    val keys = ArrayList<String>(daysBack)
-    for (i in (daysBack - 1) downTo 0) {
-        val c = cal.clone() as Calendar
-        c.add(Calendar.DAY_OF_YEAR, -i)
-        keys.add(utcKey(c.time))
+    var streak = 0
+    for (i in idx downTo 0) {
+        val c = ordered[i].second
+        if (c > 0) streak++ else break
     }
-    return keys
+    return streak
 }
 
-private fun dayOfMonthFromKey(key: String): String {
-    // key ends with "-dd"
-    val dd = key.substring(key.length - 2)
-    return if (dd.startsWith("0")) dd.substring(1) else dd
+/* build last N days (UTC) like 2025-09-22 */
+private fun lastNDatesKeys(n: Int): List<String> {
+    val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+    val out = ArrayList<String>(n)
+    repeat(n) {
+        out += utcDayKey(cal.time)
+        cal.add(Calendar.DAY_OF_YEAR, -1)
+    }
+    return out.reversed()
+}
+
+/* stable day key in UTC so queries line up */
+private fun utcDayKey(date: Date = Date()): String {
+    val f = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+    f.timeZone = TimeZone.getTimeZone("UTC")
+    return f.format(date)
+}
+
+/* quick “time ago” text for the recent list */
+private fun prettyWhen(d: Date): String {
+    val now = System.currentTimeMillis()
+    val diff = now - d.time
+    val min = 60_000L
+    val hr = 60 * min
+    val day = 24 * hr
+    return when {
+        diff < min -> "just now"
+        diff < hr -> "${diff / min}m ago"
+        diff < day -> "${diff / hr}h ago"
+        else -> SimpleDateFormat("MMM d", Locale.US).format(d)
+    }
 }
