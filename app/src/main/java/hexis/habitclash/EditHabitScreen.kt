@@ -28,6 +28,7 @@ import hexis.habitclash.ui.theme.getAppThemeColors
 
 /**
  * Edit Habit Screen for modifying existing habits.
+ * ✨ SCRUM-15: Preserves streak data when editing habits
  */
 @Composable
 fun EditHabitScreen(
@@ -42,13 +43,16 @@ fun EditHabitScreen(
     var selectedFrequency by remember { mutableStateOf("") }
     var selectedGoalCount by remember { mutableStateOf("") }
 
+    // ✨ SCRUM-15: Load existing habit data including streaks
+    var existingHabit by remember { mutableStateOf<Habit?>(null) }
+
     // dropdown expanded state
     var categoryExpanded by remember { mutableStateOf(false) }
     var frequencyExpanded by remember { mutableStateOf(false) }
     var goalCountExpanded by remember { mutableStateOf(false) }
 
     // options
-    val categories = listOf("Health", "Productivity", "Personal")
+    val categories = listOf("Health", "Productivity", "Personal", "Fitness", "Study")
     val frequencies = listOf("Daily", "Weekly", "Monthly")
     val goalCounts = listOf("1", "2", "3", "4", "5")
 
@@ -71,6 +75,7 @@ fun EditHabitScreen(
                 .addOnSuccessListener { document ->
                     val habit = document.toObject(Habit::class.java)
                     if (habit != null) {
+                        existingHabit = habit // ✨ Store complete habit
                         title = habit.title
                         description = habit.description
                         selectedCategory = habit.category
@@ -105,12 +110,89 @@ fun EditHabitScreen(
                 ) {
                     Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = colors.textColor)
                 }
+
                 Text(
                     "Edit Habit",
                     style = MaterialTheme.typography.titleLarge,
                     color = colors.textColor,
                     modifier = Modifier.align(Alignment.Center)
                 )
+            }
+
+            // ✨ SCRUM-15: Show streak info at top
+            existingHabit?.let { habit ->
+                if (habit.currentStreak > 0 || habit.totalCompletions > 0) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = colors.cardColor),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Habit Statistics",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textColor
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "🔥 Current Streak",
+                                        fontSize = 13.sp,
+                                        color = colors.secondaryTextColor
+                                    )
+                                    Text(
+                                        text = "${habit.currentStreak} days",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.accentColor
+                                    )
+                                }
+
+                                Column {
+                                    Text(
+                                        text = "🏆 Best Streak",
+                                        fontSize = 13.sp,
+                                        color = colors.secondaryTextColor
+                                    )
+                                    Text(
+                                        text = "${habit.longestStreak} days",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.textColor
+                                    )
+                                }
+
+                                Column {
+                                    Text(
+                                        text = "✅ Total",
+                                        fontSize = 13.sp,
+                                        color = colors.secondaryTextColor
+                                    )
+                                    Text(
+                                        text = "${habit.totalCompletions}",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.textColor
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             // form body
@@ -126,6 +208,7 @@ fun EditHabitScreen(
                     onChange = { title = it },
                     isDarkMode = isDarkMode
                 )
+
                 FormField(
                     label = "Description",
                     value = description,
@@ -176,17 +259,25 @@ fun EditHabitScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // save
+                // ✨ SCRUM-15: Update button - preserves streak data
                 Button(
                     onClick = {
                         val userId = FirebaseAuth.getInstance().currentUser?.uid
                         if (userId != null && title.isNotBlank()) {
-                            val updates = hashMapOf<String, Any>(
+                            // ✨ IMPORTANT: Preserve streak data when updating
+                            val updates = hashMapOf(
                                 "title" to title,
                                 "description" to description,
                                 "category" to selectedCategory,
                                 "frequency" to selectedFrequency,
-                                "goalCount" to (selectedGoalCount.toIntOrNull() ?: 1)
+                                "goalCount" to (selectedGoalCount.toIntOrNull() ?: 1),
+                                // ✨ Keep existing streak data unchanged
+                                "currentStreak" to (existingHabit?.currentStreak ?: 0),
+                                "longestStreak" to (existingHabit?.longestStreak ?: 0),
+                                "totalCompletions" to (existingHabit?.totalCompletions ?: 0),
+                                "completionDates" to (existingHabit?.completionDates ?: emptyList<String>()),
+                                "isCompletedToday" to (existingHabit?.isCompletedToday ?: false),
+                                "lastCompleted" to (existingHabit?.lastCompleted ?: 0L)
                             )
 
                             FirebaseFirestore.getInstance()
@@ -196,7 +287,7 @@ fun EditHabitScreen(
                                 .document(habitId)
                                 .update(updates)
                                 .addOnSuccessListener {
-                                    Toast.makeText(context, "Habit updated", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Habit updated ✅", Toast.LENGTH_SHORT).show()
                                     navController.popBackStack()
                                 }
                                 .addOnFailureListener { e ->
@@ -204,7 +295,7 @@ fun EditHabitScreen(
                                     Toast.makeText(context, "Failed to update habit", Toast.LENGTH_SHORT).show()
                                 }
                         } else {
-                            Toast.makeText(context, "Please fill in all required fields", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Please fill in habit name", Toast.LENGTH_SHORT).show()
                         }
                     },
                     modifier = Modifier
@@ -218,27 +309,11 @@ fun EditHabitScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // delete
+                // delete button with confirmation
+                var showDeleteDialog by remember { mutableStateOf(false) }
+
                 Button(
-                    onClick = {
-                        val userId = FirebaseAuth.getInstance().currentUser?.uid
-                        if (userId != null) {
-                            FirebaseFirestore.getInstance()
-                                .collection("users")
-                                .document(userId)
-                                .collection("habits")
-                                .document(habitId)
-                                .delete()
-                                .addOnSuccessListener {
-                                    Toast.makeText(context, "Habit deleted", Toast.LENGTH_SHORT).show()
-                                    navController.popBackStack()
-                                }
-                                .addOnFailureListener { e ->
-                                    Log.e("EditHabitScreen", "Error deleting habit", e)
-                                    Toast.makeText(context, "Failed to delete habit", Toast.LENGTH_SHORT).show()
-                                }
-                        }
-                    },
+                    onClick = { showDeleteDialog = true },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -248,15 +323,65 @@ fun EditHabitScreen(
                     Text("Delete Habit", color = Color.White, fontSize = 18.sp)
                 }
 
+                // Delete confirmation dialog
+                if (showDeleteDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showDeleteDialog = false },
+                        title = {
+                            Text(
+                                "Delete Habit?",
+                                color = colors.textColor,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        text = {
+                            Text(
+                                "This will permanently delete this habit and all its streak data. This cannot be undone.",
+                                color = colors.textColor
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    val userId = FirebaseAuth.getInstance().currentUser?.uid
+                                    if (userId != null) {
+                                        FirebaseFirestore.getInstance()
+                                            .collection("users")
+                                            .document(userId)
+                                            .collection("habits")
+                                            .document(habitId)
+                                            .delete()
+                                            .addOnSuccessListener {
+                                                Toast.makeText(context, "Habit deleted", Toast.LENGTH_SHORT).show()
+                                                showDeleteDialog = false
+                                                navController.popBackStack()
+                                            }
+                                            .addOnFailureListener { e ->
+                                                Log.e("EditHabitScreen", "Error deleting habit", e)
+                                                Toast.makeText(context, "Failed to delete habit", Toast.LENGTH_SHORT).show()
+                                            }
+                                    }
+                                }
+                            ) {
+                                Text("Delete", color = Color(0xFFE53935))
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDeleteDialog = false }) {
+                                Text("Cancel", color = colors.accentColor)
+                            }
+                        },
+                        containerColor = colors.cardColor
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
 
-        // bottom nav stays the same
         BottomNavigationBar(navController, isDarkMode)
     }
 }
-
 
 @Composable
 private fun FormField(
@@ -268,7 +393,12 @@ private fun FormField(
 ) {
     val colors = getAppThemeColors(isDarkMode)
     Column(modifier = Modifier.padding(bottom = 16.dp)) {
-        Text(text = label, color = colors.secondaryTextColor, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Text(
+            text = label,
+            color = colors.secondaryTextColor,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium
+        )
         OutlinedTextField(
             value = value,
             onValueChange = onChange,
@@ -303,10 +433,13 @@ private fun DropdownField(
     isDarkMode: Boolean
 ) {
     val colors = getAppThemeColors(isDarkMode)
-
     Column(modifier = Modifier.padding(bottom = 16.dp)) {
-        Text(text = label, color = colors.secondaryTextColor, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-
+        Text(
+            text = label,
+            color = colors.secondaryTextColor,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium
+        )
         ExposedDropdownMenuBox(
             expanded = expanded,
             onExpandedChange = onExpandChange

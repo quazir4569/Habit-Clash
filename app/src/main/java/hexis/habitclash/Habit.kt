@@ -2,16 +2,16 @@ package hexis.habitclash
 
 data class Habit(
     val id: String = "",
-    val userId: String = "",
     val title: String = "",
     val description: String = "",
     val category: String = "",
-    val frequency: String = "daily",
+    val frequency: String = "Daily",
     val goalCount: Int = 1,
-
-    val isCompletedToday: Boolean = false,
-    val startDate: Long = System.currentTimeMillis(),
-    val lastCompleted: Long = 0,
     val reminderTime: String? = null,
-    val isArchived: Boolean = false
+    val completionDates: List<String> = listOf(), // For streak calculation
+    val currentStreak: Int = 0,                   // For current streak value
+    val longestStreak: Int = 0,                   // For best streak value
+    val totalCompletions: Int = 0,                // Number of times habit completed
+    val isCompletedToday: Boolean = false,        // Today's completion status
+    val lastCompleted: Long = 0L                  // Timestamp of last completion
 )
