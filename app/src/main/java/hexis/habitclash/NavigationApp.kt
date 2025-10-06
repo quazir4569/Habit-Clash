@@ -23,36 +23,50 @@ fun NavigationApp(
             navController = navController,
             startDestination = "Login_Screen"
         ) {
+            // Login
             composable("Login_Screen") {
                 LoginScreen(navController, authViewModel, themeViewModel)
             }
+
+            // Registration
             composable("Registration_Screen") {
                 RegistrationScreen(navController, authViewModel, themeViewModel)
             }
+
+            // Dashboard
             composable("Dashboard_Screen") {
                 DashboardScreen(navController, authViewModel, themeViewModel)
             }
+
+            // Add Habit
             composable("AddHabit_Screen") {
                 AddHabitScreen(navController, themeViewModel)
             }
+
+            // Settings
             composable("Settings_Screen") {
                 SettingsScreen(navController, authViewModel, themeViewModel)
             }
+
+            // Analytics
             composable("Analytics_Screen") {
                 AnalyticsScreen(navController, themeViewModel)
             }
+
+            // Edit Habit (Corrected route name to match usage)
             composable(
                 "Edit_Habit/{habitId}",
                 arguments = listOf(navArgument("habitId") { type = NavType.StringType })
-            ) { backStack ->
-                val habitId = backStack.arguments?.getString("habitId") ?: ""
+            ) { backStackEntry ->
+                val habitId = backStackEntry.arguments?.getString("habitId") ?: ""
                 EditHabitScreen(
                     navController = navController,
                     themeViewModel = themeViewModel,
                     habitId = habitId
                 )
             }
-            // new history route
+
+            // History screen
             composable("History_Screen") {
                 HistoryScreen(
                     navController = navController,

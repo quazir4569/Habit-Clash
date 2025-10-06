@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import hexis.habitclash.ui.theme.AppThemeColors
 import hexis.habitclash.ui.theme.getAppThemeColors
@@ -41,55 +42,46 @@ fun DashboardScreen(
     val isDarkMode = themeViewModel.isDarkMode
     val colors = getAppThemeColors(isDarkMode)
     val scrollState = rememberScrollState()
+
     var username by remember { mutableStateOf("User") }
     var completeDialog by remember { mutableStateOf(false) }
     var progress by remember { mutableFloatStateOf(0f) }
 
+    // one stable key for “today” (UTC)
+    val todayKey = remember { StreakCalculator.getTodayKey() }
+
     val totalCurrentStreak = habits.sumOf { it.currentStreak }
     val bestStreak = habits.maxOfOrNull { it.longestStreak } ?: 0
     val totalHabits = habits.size
-    val completedHabits = habits.count { it.isCompletedToday }
+    val completedHabits = habits.count { it.completionDates.contains(todayKey) }
 
     LaunchedEffect(Unit) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return@LaunchedEffect
         val db = FirebaseFirestore.getInstance()
 
-        // Load username
         db.collection("users")
             .document(userId)
             .get()
-            .addOnSuccessListener { document ->
-                if (document != null && document.exists()) {
-                    username = document.getString("username") ?: "User"
-                }
-            }
+            .addOnSuccessListener { d -> username = d.getString("username") ?: "User" }
 
-        // Load habits realtime
-        db.collection("users")
-            .document(userId)
-            .collection("habits")
+        // realtime habits
+        db.collection("users").document(userId).collection("habits")
             .addSnapshotListener { snapshot, error ->
                 if (error == null && snapshot != null) {
                     habits.clear()
-                    for (doc in snapshot.documents) {
-                        val habit = doc.toObject(Habit::class.java)?.copy(id = doc.id)
-                        if (habit != null) habits.add(habit)
+                    snapshot.documents.forEach { doc ->
+                        doc.toObject(Habit::class.java)?.copy(id = doc.id)?.let { habits += it }
                     }
                 }
             }
     }
 
     if (authState.value is AuthState.Unauthenticated) {
-        LaunchedEffect(Unit) {
-            navController.navigate("Login_Screen")
-        }
+        LaunchedEffect(Unit) { navController.navigate("Login_Screen") }
     }
 
     progress = if (totalHabits > 0) completedHabits.toFloat() / totalHabits else 0f
-
-    if (progress == 1f && totalHabits > 0 && !completeDialog) {
-        completeDialog = true
-    }
+    if (progress == 1f && totalHabits > 0 && !completeDialog) completeDialog = true
 
     Column(
         modifier = Modifier
@@ -104,13 +96,13 @@ fun DashboardScreen(
                 .padding(horizontal = 24.dp)
                 .verticalScroll(scrollState)
         ) {
+            // header card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = colors.cardColor),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                colors = CardDefaults.cardColors(containerColor = colors.cardColor)
             ) {
                 Row(
                     modifier = Modifier
@@ -134,12 +126,7 @@ fun DashboardScreen(
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Hello, @$username",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.textColor
-                        )
+                        Text("Hello, @$username", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.textColor)
                         Spacer(modifier = Modifier.height(6.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
@@ -147,25 +134,13 @@ fun DashboardScreen(
                                 color = colors.accentColor,
                                 modifier = Modifier.height(26.dp)
                             ) {
-                                Box(
-                                    modifier = Modifier.padding(horizontal = 10.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "Level 0",
-                                        color = Color.White,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
+                                Box(modifier = Modifier.padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
+                                    Text("Level 0", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                                 }
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Text(
-                                text = if (totalCurrentStreak > 0) {
-                                    "$totalCurrentStreak Day Streak 🔥"
-                                } else {
-                                    "Start your streak! 🎯"
-                                },
+                                text = if (totalCurrentStreak > 0) "$totalCurrentStreak Day Streak 🔥" else "Start your streak! 🎯",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = if (totalCurrentStreak > 0) colors.accentColor else colors.textColor
@@ -173,11 +148,7 @@ fun DashboardScreen(
                         }
                         if (bestStreak > 0) {
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Best Streak: $bestStreak days 🏆",
-                                fontSize = 11.sp,
-                                color = colors.secondaryTextColor
-                            )
+                            Text("Best Streak: $bestStreak days 🏆", fontSize = 11.sp, color = colors.secondaryTextColor)
                         }
                     }
                 }
@@ -186,151 +157,167 @@ fun DashboardScreen(
             if (completeDialog) {
                 AlertDialog(
                     onDismissRequest = { completeDialog = false },
-                    title = {
-                        Text(
-                            "Congratulations! 🎉",
-                            color = colors.textColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    text = {
-                        Text(
-                            "You finished all your daily habits! Keep up the amazing work!",
-                            color = colors.textColor
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { completeDialog = false }) {
-                            Text("Awesome!", color = colors.accentColor)
-                        }
-                    },
+                    title = { Text("Congratulations! 🎉", color = colors.textColor, fontWeight = FontWeight.Bold) },
+                    text = { Text("You finished all your daily habits! Keep up the amazing work!", color = colors.textColor) },
+                    confirmButton = { TextButton(onClick = { completeDialog = false }) { Text("Awesome!", color = colors.accentColor) } },
                     containerColor = colors.cardColor
                 )
             }
 
-            // Habit Progress Card
+            // progress card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = colors.cardColor),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                colors = CardDefaults.cardColors(containerColor = colors.cardColor)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(20.dp)
                 ) {
-                    Text(
-                        text = "Habit Progress",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.textColor
-                    )
+                    Text("Habit Progress", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = colors.textColor)
+
+                    // Float overload works on Compose 1.5/1.6
                     LinearProgressIndicator(
                         progress = progress,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 10.dp),
-                        color = colors.accentColor,
+                        color = colors.accentColor
                     )
+
                     Text(
-                        text = "$completedHabits of $totalHabits tasks completed ${"%.0f".format(progress * 100)}%",
+                        "$completedHabits of $totalHabits tasks completed ${"%.0f".format(progress * 100)}%",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Medium,
                         color = colors.textColor,
                         modifier = Modifier.padding(top = 8.dp)
                     )
+
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Daily Habits",
+                        "Daily Habits",
                         fontWeight = FontWeight.Bold,
                         fontSize = 19.sp,
                         color = colors.textColor,
                         modifier = Modifier.padding(top = 12.dp, bottom = 12.dp)
                     )
+
                     if (habits.isEmpty()) {
-                        Text(
-                            "No habits yet. Use the Add Habit button below to create one.",
-                            color = colors.secondaryTextColor
-                        )
+                        Text("No habits yet. Use the Add Habit button below to create one.", color = colors.secondaryTextColor)
                     } else {
                         habits.forEachIndexed { index, habit ->
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                // bind to completionDates for “don’t flicker back”
+                                val isCheckedToday = habit.completionDates.contains(todayKey)
+
                                 Checkbox(
-                                    checked = habit.isCompletedToday,
+                                    checked = isCheckedToday,
                                     onCheckedChange = { isChecked ->
                                         val userId = FirebaseAuth.getInstance().currentUser?.uid
                                         if (userId != null && habit.id.isNotEmpty()) {
-                                            val updatedDates = if (isChecked) {
-                                                StreakCalculator.addTodayCompletion(habit.completionDates)
-                                            } else {
-                                                StreakCalculator.removeTodayCompletion(habit.completionDates)
-                                            }
-                                            val newCurrentStreak = StreakCalculator.calculateCurrentStreak(updatedDates)
-                                            val newLongestStreak =
-                                                max(StreakCalculator.calculateLongestStreak(updatedDates), habit.longestStreak)
-                                            val newTotalCompletions = updatedDates.size
+                                            val updatedDates =
+                                                if (isChecked)
+                                                    StreakCalculator.addTodayCompletion(habit.completionDates, todayKey)
+                                                else
+                                                    StreakCalculator.removeTodayCompletion(habit.completionDates, todayKey)
 
+                                            val newCurrent = StreakCalculator.calculateCurrentStreak(updatedDates, todayKey)
+                                            val newLongest = max(
+                                                StreakCalculator.calculateLongestStreak(updatedDates),
+                                                habit.longestStreak
+                                            )
+                                            val newTotal = updatedDates.size
+
+                                            // optimistic UI
                                             habits[index] = habit.copy(
                                                 isCompletedToday = isChecked,
                                                 completionDates = updatedDates,
-                                                currentStreak = newCurrentStreak,
-                                                longestStreak = newLongestStreak,
-                                                totalCompletions = newTotalCompletions,
+                                                currentStreak = newCurrent,
+                                                longestStreak = newLongest,
+                                                totalCompletions = newTotal,
                                                 lastCompleted = if (isChecked) System.currentTimeMillis() else habit.lastCompleted
                                             )
 
-                                            FirebaseFirestore.getInstance()
-                                                .collection("users")
-                                                .document(userId)
-                                                .collection("habits")
-                                                .document(habit.id)
-                                                .update(
+                                            val db = FirebaseFirestore.getInstance()
+                                            val habitRef = db.collection("users").document(userId)
+                                                .collection("habits").document(habit.id)
+                                            val logRef = db.collection("users").document(userId)
+                                                .collection("completion_logs").document("${habit.id}_${todayKey}")
+
+                                            // persist habit document
+                                            habitRef.update(
+                                                mapOf(
+                                                    "isCompletedToday" to isChecked,
+                                                    "completionDates" to updatedDates,
+                                                    "currentStreak" to newCurrent,
+                                                    "longestStreak" to newLongest,
+                                                    "totalCompletions" to newTotal,
+                                                    "lastCompleted" to (if (isChecked) System.currentTimeMillis() else habit.lastCompleted)
+                                                )
+                                            )
+
+                                            // keep History/Analytics in sync by updating completion_logs
+                                            if (isChecked) {
+                                                logRef.set(
                                                     mapOf(
-                                                        "isCompletedToday" to isChecked,
-                                                        "completionDates" to updatedDates,
-                                                        "currentStreak" to newCurrentStreak,
-                                                        "longestStreak" to newLongestStreak,
-                                                        "totalCompletions" to newTotalCompletions,
-                                                        "lastCompleted" to (if (isChecked) System.currentTimeMillis() else habit.lastCompleted)
+                                                        "habitId" to habit.id,
+                                                        "userId" to userId,
+                                                        "dateKey" to todayKey,
+                                                        "frequency" to habit.frequency,
+                                                        "completed" to true,
+                                                        "updatedAt" to FieldValue.serverTimestamp()
                                                     )
                                                 )
-                                                .addOnSuccessListener {
-                                                    if (isChecked && newCurrentStreak > 0) {
-                                                        val message = StreakCalculator.getStreakMessage(
-                                                            newCurrentStreak,
-                                                            newLongestStreak
+                                            } else {
+                                                // remove the row so the day no longer counts
+                                                logRef.delete().addOnFailureListener {
+                                                    // if delete fails, mark as not-completed instead of leaving stale true
+                                                    logRef.set(
+                                                        mapOf(
+                                                            "habitId" to habit.id,
+                                                            "userId" to userId,
+                                                            "dateKey" to todayKey,
+                                                            "frequency" to habit.frequency,
+                                                            "completed" to false,
+                                                            "updatedAt" to FieldValue.serverTimestamp()
                                                         )
-                                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                                                    }
+                                                    )
                                                 }
-                                                .addOnFailureListener {
-                                                    Toast.makeText(context, "Failed to update. Check your connection.", Toast.LENGTH_SHORT).show()
-                                                }
+                                            }
+
+                                            if (isChecked && newCurrent > 0) {
+                                                Toast.makeText(
+                                                    context,
+                                                    StreakCalculator.getStreakMessage(newCurrent, newLongest),
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
                                         }
 
-                                        val checkedCount = habits.count { it.isCompletedToday }
+                                        // recompute progress locally
+                                        val checkedCount = habits.count { it.completionDates.contains(todayKey) }
                                         progress = if (habits.isNotEmpty()) checkedCount.toFloat() / habits.size else 0f
                                     }
                                 )
+
                                 HabitItem(
                                     habit = habit,
                                     isDarkMode = isDarkMode,
                                     colors = colors,
-                                    onHabitClick = { navController.navigate("EditHabit_Screen/${habit.id}") }
+                                    onHabitClick = { navController.navigate("Edit_Habit/${habit.id}") }
                                 )
                             }
-                            if (index < habits.size - 1) {
-                                Spacer(modifier = Modifier.height(24.dp))
-                            }
+                            if (index < habits.size - 1) Spacer(modifier = Modifier.height(24.dp))
                         }
                     }
                 }
             }
         }
+
         BottomNavigationBar(navController, isDarkMode)
     }
 }
@@ -351,57 +338,24 @@ fun HabitItem(
         Spacer(modifier = Modifier.width(24.dp))
 
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = habit.title,
-                fontWeight = FontWeight.Medium,
-                fontSize = 14.sp,
-                color = colors.textColor
-            )
-            if (habit.description.isNotBlank()) {
-                Text(
-                    text = habit.description,
-                    color = colors.secondaryTextColor,
-                    fontSize = 12.sp
-                )
-            }
-            if (habit.category.isNotBlank()) {
-                Text(
-                    text = "Category: ${habit.category}",
-                    color = colors.secondaryTextColor,
-                    fontSize = 12.sp
-                )
-            }
-            Text(
-                text = "Frequency: ${habit.frequency}, Goal: ${habit.goalCount}",
-                color = colors.secondaryTextColor,
-                fontSize = 12.sp
-            )
-            habit.reminderTime?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    text = "Reminder: $it",
-                    color = colors.secondaryTextColor,
-                    fontSize = 12.sp
-                )
-            }
+            Text(habit.title, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = colors.textColor)
+            if (habit.description.isNotBlank()) Text(habit.description, color = colors.secondaryTextColor, fontSize = 12.sp)
+            if (habit.category.isNotBlank()) Text("Category: ${habit.category}", color = colors.secondaryTextColor, fontSize = 12.sp)
+            Text("Frequency: ${habit.frequency}, Goal: ${habit.goalCount}", color = colors.secondaryTextColor, fontSize = 12.sp)
+            habit.reminderTime?.takeIf { it.isNotBlank() }?.let { Text("Reminder: $it", color = colors.secondaryTextColor, fontSize = 12.sp) }
             if (habit.currentStreak > 0 || habit.totalCompletions > 0) {
                 Spacer(modifier = Modifier.height(4.dp))
                 if (habit.currentStreak > 0) {
                     Text(
                         text = "🔥 ${habit.currentStreak} day streak" +
-                                if (habit.longestStreak > habit.currentStreak)
-                                    " (Best: ${habit.longestStreak})"
-                                else "",
+                                if (habit.longestStreak > habit.currentStreak) " (Best: ${habit.longestStreak})" else "",
                         color = colors.accentColor,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
                 if (habit.totalCompletions > 0) {
-                    Text(
-                        text = "✅ Completed ${habit.totalCompletions} times",
-                        color = colors.secondaryTextColor,
-                        fontSize = 11.sp
-                    )
+                    Text("✅ Completed ${habit.totalCompletions} times", color = colors.secondaryTextColor, fontSize = 11.sp)
                 }
             }
         }
