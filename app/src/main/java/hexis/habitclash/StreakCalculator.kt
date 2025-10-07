@@ -8,6 +8,24 @@ import java.util.TimeZone
 
 object StreakCalculator {
 
+    /** Tier definitions based on streak milestones. */
+    enum class Tier(val label: String) {
+        BRONZE("Bronze"),
+        SILVER("Silver"),
+        GOLD("Gold"),
+        NONE("No Tier")
+    }
+
+    /** Get the user tier based on current streak value. */
+    fun getTierForStreak(streak: Int): Tier {
+        return when {
+            streak >= 20 -> Tier.GOLD
+            streak >= 10 -> Tier.SILVER
+            streak >= 5 -> Tier.BRONZE
+            else -> Tier.NONE
+        }
+    }
+
     /** Stable UTC key like 2025-10-06 (used for today and comparisons). */
     fun getTodayKey(date: Date = Date()): String {
         val f = SimpleDateFormat("yyyy-MM-dd", Locale.US)
