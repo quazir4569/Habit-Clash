@@ -64,6 +64,22 @@ import hexis.habitclash.ui.theme.AppThemeColors
 import hexis.habitclash.ui.theme.getAppThemeColors
 import kotlin.math.max
 
+// Badge data model (place at top for now, refactor as needed)
+data class AchievementBadge(
+    val id: String,
+    val name: String,
+    val description: String,
+    val milestone: Int,
+    val category: String,
+    var isAchieved: Boolean = false
+)
+
+// Define scalable milestone badge catalog
+val milestoneBadges = listOf(
+    AchievementBadge("streak_7", "7-Day Streak", "Achieve a 7-day streak", 7, "streak"),
+    AchievementBadge("streak_30", "30-Day Streak", "Achieve a 30-day streak", 30, "streak")
+)
+
 @Composable
 fun DashboardScreen(
     navController: NavHostController,
@@ -82,14 +98,19 @@ fun DashboardScreen(
     var progress by remember { mutableFloatStateOf(0f) }
     var showDialog by remember { mutableStateOf(false) }
 
-    // one stable key for “today” (UTC)
     val todayKey = remember { StreakCalculator.getTodayKey() }
 
     val totalCurrentStreak = habits.sumOf { it.currentStreak }
+    val currentTier = StreakCalculator.getTierForStreak(totalCurrentStreak)
     val bestStreak = habits.maxOfOrNull { it.longestStreak } ?: 0
     val totalHabits = habits.size
     val completedHabits = habits.count { it.completionDates.contains(todayKey) }
     var leaderboard by remember { mutableStateOf<List<LeaderboardEntry>>(emptyList()) }
+
+    // Compute badges achieved (scalable for future milestones)
+    val achievedBadges = milestoneBadges.map { badge ->
+        badge.copy(isAchieved = (totalCurrentStreak >= badge.milestone))
+    }
 
     LaunchedEffect(Unit) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return@LaunchedEffect
@@ -100,7 +121,6 @@ fun DashboardScreen(
             .get()
             .addOnSuccessListener { d -> username = d.getString("username") ?: "User" }
 
-        // realtime habits
         db.collection("users").document(userId).collection("habits")
             .addSnapshotListener { snapshot, error ->
                 if (error == null && snapshot != null) {
@@ -132,7 +152,6 @@ fun DashboardScreen(
                 .padding(horizontal = 24.dp)
                 .verticalScroll(scrollState)
         ) {
-            // header card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -169,7 +188,7 @@ fun DashboardScreen(
                             color = colors.textColor
                         )
                         Spacer(modifier = Modifier.height(6.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically){
                             Surface(
                                 shape = RoundedCornerShape(50),
                                 color = colors.accentColor,
@@ -195,6 +214,50 @@ fun DashboardScreen(
                                 color = if (totalCurrentStreak > 0) colors.accentColor else colors.textColor
                             )
                         }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically){
+                            Text(
+                                text = "Tier: ${currentTier.label}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = when(currentTier){
+                                    StreakCalculator.Tier.BRONZE -> Color(0xFFCD7F32)
+                                    StreakCalculator.Tier.SILVER -> Color(0xFFC0C0C0)
+                                    StreakCalculator.Tier.GOLD -> Color(0xFFFFD700)
+                                    else -> colors.textColor
+                                }
+                            )
+                        }
+
+                        // BADGE ROW: Achievements (Milestone Badges)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "Achievements",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colors.textColor
+                        )
+                        Row {
+                            achievedBadges.forEach { badge ->
+                                val badgeColor = if (badge.isAchieved) Color(0xFF4CAF50) else Color.Gray
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .padding(end = 7.dp)
+                                        .background(badgeColor, RoundedCornerShape(8.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        badge.name.take(2),  // Show first two letters (e.g. "7-" for 7-day)
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        modifier = Modifier.padding(4.dp)
+                                    )
+                                }
+                            }
+                        }
+
                         if (bestStreak > 0) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
@@ -221,31 +284,6 @@ fun DashboardScreen(
                 }
             }
 
-            /*if (completeDialog) {
-                AlertDialog(
-                    onDismissRequest = { completeDialog = false },
-                    title = {
-                        Text(
-                            "Congratulations! 🎉",
-                            color = colors.textColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    text = {
-                        Text(
-                            "You finished all your daily habits! Keep up the amazing work!",
-                            color = colors.textColor
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            completeDialog = false
-                        }) { Text("Awesome!", color = colors.accentColor) }
-                    },
-                    containerColor = colors.cardColor
-                )
-            }*/
-
             if (showDialog) {
                 Dialog(onDismissRequest = { showDialog = false }) {
                     AnimatedVisibility(
@@ -258,23 +296,17 @@ fun DashboardScreen(
                             title = { Text("Leaderboard") },
                             text = {
                                 Column {
-                                    // Header
-                                    Row {
-                                        Text("Rank", modifier = Modifier.weight(1f))
-                                        Text("Name", modifier = Modifier.weight(3f))
-                                        Text("Score", modifier = Modifier.weight(2f))
-                                    }
+                                    Row { Text("Rank", Modifier.weight(1f)); Text("Name", Modifier.weight(3f)); Text("Score", Modifier.weight(2f)) }
                                     HorizontalDivider(
                                         Modifier,
                                         DividerDefaults.Thickness,
                                         color = Color.Gray
                                     )
-
                                     leaderboard.forEach { entry ->
                                         Row {
-                                            Text(entry.rank.toString(), modifier = Modifier.weight(1f))
-                                            Text(entry.name, modifier = Modifier.weight(3f))
-                                            Text(entry.score.toString(), modifier = Modifier.weight(2f))
+                                            Text(entry.rank.toString(), Modifier.weight(1f))
+                                            Text(entry.name, Modifier.weight(3f))
+                                            Text(entry.score.toString(), Modifier.weight(2f))
                                         }
                                         HorizontalDivider(thickness = 0.5.dp, color = Color.Gray)
                                     }
@@ -284,16 +316,13 @@ fun DashboardScreen(
                                 TextButton(onClick = {
                                     showDialog = false
                                     navController.popBackStack()
-                                }) {
-                                    Text("Return!")
-                                }
+                                }) { Text("Return!") }
                             }
                         )
                     }
                 }
             }
 
-            // progress card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -311,7 +340,6 @@ fun DashboardScreen(
                         color = colors.textColor
                     )
 
-                    // Float overload works on Compose 1.5/1.6
                     LinearProgressIndicator(
                         progress = progress,
                         modifier = Modifier
@@ -348,7 +376,6 @@ fun DashboardScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // bind to completionDates for “don’t flicker back”
                                 val isCheckedToday = habit.completionDates.contains(todayKey)
 
                                 Checkbox(
@@ -379,7 +406,6 @@ fun DashboardScreen(
                                             )
                                             val newTotal = updatedDates.size
 
-                                            // optimistic UI
                                             habits[index] = habit.copy(
                                                 isCompletedToday = isChecked,
                                                 completionDates = updatedDates,
@@ -396,7 +422,6 @@ fun DashboardScreen(
                                                 .collection("completion_logs")
                                                 .document("${habit.id}_${todayKey}")
 
-                                            // persist habit document
                                             habitRef.update(
                                                 mapOf(
                                                     "isCompletedToday" to isChecked,
@@ -404,11 +429,10 @@ fun DashboardScreen(
                                                     "currentStreak" to newCurrent,
                                                     "longestStreak" to newLongest,
                                                     "totalCompletions" to newTotal,
-                                                    "lastCompleted" to (if (isChecked) System.currentTimeMillis() else habit.lastCompleted)
+                                                    "lastCompleted" to if (isChecked) System.currentTimeMillis() else habit.lastCompleted
                                                 )
                                             )
 
-                                            // keep History/Analytics in sync by updating completion_logs
                                             if (isChecked) {
                                                 logRef.set(
                                                     mapOf(
@@ -421,9 +445,7 @@ fun DashboardScreen(
                                                     )
                                                 )
                                             } else {
-                                                // remove the row so the day no longer counts
                                                 logRef.delete().addOnFailureListener {
-                                                    // if delete fails, mark as not-completed instead of leaving stale true
                                                     logRef.set(
                                                         mapOf(
                                                             "habitId" to habit.id,
@@ -448,12 +470,8 @@ fun DashboardScreen(
                                                 ).show()
                                             }
                                         }
-
-                                        // recompute progress locally
-                                        val checkedCount =
-                                            habits.count { it.completionDates.contains(todayKey) }
-                                        progress =
-                                            if (habits.isNotEmpty()) checkedCount.toFloat() / habits.size else 0f
+                                        val checkedCount = habits.count { it.completionDates.contains(todayKey) }
+                                        progress = if (habits.isNotEmpty()) checkedCount.toFloat() / habits.size else 0f
                                     }
                                 )
 
@@ -518,8 +536,7 @@ fun HabitItem(
                 Spacer(modifier = Modifier.height(4.dp))
                 if (habit.currentStreak > 0) {
                     Text(
-                        text = "🔥 ${habit.currentStreak} day streak" +
-                                if (habit.longestStreak > habit.currentStreak) " (Best: ${habit.longestStreak})" else "",
+                        text = "🔥 ${habit.currentStreak} day streak" + if (habit.longestStreak > habit.currentStreak) " (Best: ${habit.longestStreak})" else "",
                         color = colors.accentColor,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold
