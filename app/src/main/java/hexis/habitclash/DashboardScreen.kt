@@ -1,18 +1,52 @@
 package hexis.habitclash
 
+import android.util.Log
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DividerDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,8 +55,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavHostController
-import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -46,6 +80,7 @@ fun DashboardScreen(
     var username by remember { mutableStateOf("User") }
     var completeDialog by remember { mutableStateOf(false) }
     var progress by remember { mutableFloatStateOf(0f) }
+    var showDialog by remember { mutableStateOf(false) }
 
     // one stable key for “today” (UTC)
     val todayKey = remember { StreakCalculator.getTodayKey() }
@@ -54,6 +89,7 @@ fun DashboardScreen(
     val bestStreak = habits.maxOfOrNull { it.longestStreak } ?: 0
     val totalHabits = habits.size
     val completedHabits = habits.count { it.completionDates.contains(todayKey) }
+    var leaderboard by remember { mutableStateOf<List<LeaderboardEntry>>(emptyList()) }
 
     LaunchedEffect(Unit) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return@LaunchedEffect
@@ -126,7 +162,12 @@ fun DashboardScreen(
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Hello, @$username", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.textColor)
+                        Text(
+                            "Hello, @$username",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textColor
+                        )
                         Spacer(modifier = Modifier.height(6.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
@@ -134,8 +175,16 @@ fun DashboardScreen(
                                 color = colors.accentColor,
                                 modifier = Modifier.height(26.dp)
                             ) {
-                                Box(modifier = Modifier.padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
-                                    Text("Level 0", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                Box(
+                                    modifier = Modifier.padding(horizontal = 10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        "Level 0",
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
                                 }
                             }
                             Spacer(modifier = Modifier.width(16.dp))
@@ -148,20 +197,100 @@ fun DashboardScreen(
                         }
                         if (bestStreak > 0) {
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text("Best Streak: $bestStreak days 🏆", fontSize = 11.sp, color = colors.secondaryTextColor)
+                            Text(
+                                "Best Streak: $bestStreak days 🏆",
+                                fontSize = 11.sp,
+                                color = colors.secondaryTextColor
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(onClick = { showDialog = true
+
+                            fetchLeaderboard { data ->
+                                leaderboard = data
+                            }}
+                        ) {
+                            Text("Show Leaderboard",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = colors.textColor)
                         }
                     }
                 }
             }
 
-            if (completeDialog) {
+            /*if (completeDialog) {
                 AlertDialog(
                     onDismissRequest = { completeDialog = false },
-                    title = { Text("Congratulations! 🎉", color = colors.textColor, fontWeight = FontWeight.Bold) },
-                    text = { Text("You finished all your daily habits! Keep up the amazing work!", color = colors.textColor) },
-                    confirmButton = { TextButton(onClick = { completeDialog = false }) { Text("Awesome!", color = colors.accentColor) } },
+                    title = {
+                        Text(
+                            "Congratulations! 🎉",
+                            color = colors.textColor,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    text = {
+                        Text(
+                            "You finished all your daily habits! Keep up the amazing work!",
+                            color = colors.textColor
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            completeDialog = false
+                        }) { Text("Awesome!", color = colors.accentColor) }
+                    },
                     containerColor = colors.cardColor
                 )
+            }*/
+
+            if (showDialog) {
+                Dialog(onDismissRequest = { showDialog = false }) {
+                    AnimatedVisibility(
+                        visible = showDialog,
+                        enter = fadeIn(animationSpec = tween(500)) + scaleIn(initialScale = 0.8f),
+                        exit = fadeOut(animationSpec = tween(300)) + scaleOut(targetScale = 0.8f)
+                    ) {
+                        AlertDialog(
+                            onDismissRequest = { showDialog = false },
+                            title = { Text("Leaderboard") },
+                            text = {
+                                Column {
+                                    // Header
+                                    Row {
+                                        Text("Rank", modifier = Modifier.weight(1f))
+                                        Text("Name", modifier = Modifier.weight(3f))
+                                        Text("Score", modifier = Modifier.weight(2f))
+                                    }
+                                    HorizontalDivider(
+                                        Modifier,
+                                        DividerDefaults.Thickness,
+                                        color = Color.Gray
+                                    )
+
+                                    leaderboard.forEach { entry ->
+                                        Row {
+                                            Text(entry.rank.toString(), modifier = Modifier.weight(1f))
+                                            Text(entry.name, modifier = Modifier.weight(3f))
+                                            Text(entry.score.toString(), modifier = Modifier.weight(2f))
+                                        }
+                                        HorizontalDivider(thickness = 0.5.dp, color = Color.Gray)
+                                    }
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    showDialog = false
+                                    navController.popBackStack()
+                                }) {
+                                    Text("Return!")
+                                }
+                            }
+                        )
+                    }
+                }
             }
 
             // progress card
@@ -175,7 +304,12 @@ fun DashboardScreen(
                         .fillMaxWidth()
                         .padding(20.dp)
                 ) {
-                    Text("Habit Progress", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = colors.textColor)
+                    Text(
+                        "Habit Progress",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textColor
+                    )
 
                     // Float overload works on Compose 1.5/1.6
                     LinearProgressIndicator(
@@ -204,7 +338,10 @@ fun DashboardScreen(
                     )
 
                     if (habits.isEmpty()) {
-                        Text("No habits yet. Use the Add Habit button below to create one.", color = colors.secondaryTextColor)
+                        Text(
+                            "No habits yet. Use the Add Habit button below to create one.",
+                            color = colors.secondaryTextColor
+                        )
                     } else {
                         habits.forEachIndexed { index, habit ->
                             Row(
@@ -221,11 +358,21 @@ fun DashboardScreen(
                                         if (userId != null && habit.id.isNotEmpty()) {
                                             val updatedDates =
                                                 if (isChecked)
-                                                    StreakCalculator.addTodayCompletion(habit.completionDates, todayKey)
+                                                    StreakCalculator.addTodayCompletion(
+                                                        habit.completionDates,
+                                                        todayKey
+                                                    )
                                                 else
-                                                    StreakCalculator.removeTodayCompletion(habit.completionDates, todayKey)
+                                                    StreakCalculator.removeTodayCompletion(
+                                                        habit.completionDates,
+                                                        todayKey
+                                                    )
 
-                                            val newCurrent = StreakCalculator.calculateCurrentStreak(updatedDates, todayKey)
+                                            val newCurrent =
+                                                StreakCalculator.calculateCurrentStreak(
+                                                    updatedDates,
+                                                    todayKey
+                                                )
                                             val newLongest = max(
                                                 StreakCalculator.calculateLongestStreak(updatedDates),
                                                 habit.longestStreak
@@ -246,7 +393,8 @@ fun DashboardScreen(
                                             val habitRef = db.collection("users").document(userId)
                                                 .collection("habits").document(habit.id)
                                             val logRef = db.collection("users").document(userId)
-                                                .collection("completion_logs").document("${habit.id}_${todayKey}")
+                                                .collection("completion_logs")
+                                                .document("${habit.id}_${todayKey}")
 
                                             // persist habit document
                                             habitRef.update(
@@ -292,15 +440,20 @@ fun DashboardScreen(
                                             if (isChecked && newCurrent > 0) {
                                                 Toast.makeText(
                                                     context,
-                                                    StreakCalculator.getStreakMessage(newCurrent, newLongest),
+                                                    StreakCalculator.getStreakMessage(
+                                                        newCurrent,
+                                                        newLongest
+                                                    ),
                                                     Toast.LENGTH_SHORT
                                                 ).show()
                                             }
                                         }
 
                                         // recompute progress locally
-                                        val checkedCount = habits.count { it.completionDates.contains(todayKey) }
-                                        progress = if (habits.isNotEmpty()) checkedCount.toFloat() / habits.size else 0f
+                                        val checkedCount =
+                                            habits.count { it.completionDates.contains(todayKey) }
+                                        progress =
+                                            if (habits.isNotEmpty()) checkedCount.toFloat() / habits.size else 0f
                                     }
                                 )
 
@@ -338,11 +491,29 @@ fun HabitItem(
         Spacer(modifier = Modifier.width(24.dp))
 
         Column(modifier = Modifier.weight(1f)) {
-            Text(habit.title, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = colors.textColor)
-            if (habit.description.isNotBlank()) Text(habit.description, color = colors.secondaryTextColor, fontSize = 12.sp)
-            if (habit.category.isNotBlank()) Text("Category: ${habit.category}", color = colors.secondaryTextColor, fontSize = 12.sp)
-            Text("Frequency: ${habit.frequency}, Goal: ${habit.goalCount}", color = colors.secondaryTextColor, fontSize = 12.sp)
-            habit.reminderTime?.takeIf { it.isNotBlank() }?.let { Text("Reminder: $it", color = colors.secondaryTextColor, fontSize = 12.sp) }
+            Text(
+                habit.title,
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                color = colors.textColor
+            )
+            if (habit.description.isNotBlank()) Text(
+                habit.description,
+                color = colors.secondaryTextColor,
+                fontSize = 12.sp
+            )
+            if (habit.category.isNotBlank()) Text(
+                "Category: ${habit.category}",
+                color = colors.secondaryTextColor,
+                fontSize = 12.sp
+            )
+            Text(
+                "Frequency: ${habit.frequency}, Goal: ${habit.goalCount}",
+                color = colors.secondaryTextColor,
+                fontSize = 12.sp
+            )
+            habit.reminderTime?.takeIf { it.isNotBlank() }
+                ?.let { Text("Reminder: $it", color = colors.secondaryTextColor, fontSize = 12.sp) }
             if (habit.currentStreak > 0 || habit.totalCompletions > 0) {
                 Spacer(modifier = Modifier.height(4.dp))
                 if (habit.currentStreak > 0) {
@@ -355,9 +526,58 @@ fun HabitItem(
                     )
                 }
                 if (habit.totalCompletions > 0) {
-                    Text("✅ Completed ${habit.totalCompletions} times", color = colors.secondaryTextColor, fontSize = 11.sp)
+                    Text(
+                        "✅ Completed ${habit.totalCompletions} times",
+                        color = colors.secondaryTextColor,
+                        fontSize = 11.sp
+                    )
                 }
             }
         }
     }
+}
+
+fun fetchLeaderboard(onResult: (List<LeaderboardEntry>) -> Unit) {
+    val db = FirebaseFirestore.getInstance()
+
+    db.collection("users").get()
+        .addOnSuccessListener { result ->
+            val tempList = mutableListOf<LeaderboardEntry>()
+            var processedCount = 0
+
+            if (result.isEmpty) {
+                onResult(emptyList())
+                return@addOnSuccessListener
+            }
+
+            result.documents.forEach { userDoc ->
+                val username = userDoc.getString("username") ?: "Unknown"
+
+                userDoc.reference.collection("completion_logs").get()
+                    .addOnSuccessListener { actions ->
+                        val completedCount = actions.size()
+                        tempList.add(
+                            LeaderboardEntry(
+                                rank = 0,
+                                name = username,
+                                score = completedCount
+                            )
+                        )
+
+                        processedCount++
+                        if (processedCount == result.size()) {
+                            val ranked = tempList
+                                .sortedByDescending { it.score }
+                                .mapIndexed { idx, entry ->
+                                    entry.copy(rank = idx + 1)
+                                }
+                            onResult(ranked)
+                        }
+                    }
+            }
+        }
+        .addOnFailureListener { e ->
+            Log.e("Firestore", "Error fetching leaderboard", e)
+            onResult(emptyList())
+        }
 }
