@@ -5,6 +5,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -23,7 +24,8 @@ fun BottomNavigationBar(
     val items = listOf(
         BottomItem("Dashboard_Screen", Icons.Filled.Home, "Dashboard"),
         BottomItem("AddHabit_Screen", Icons.Filled.Add, "Add"),
-        BottomItem("Analytics_Screen", Icons.Filled.Info, "Analytics"), // <- new tab with Info icon
+        BottomItem("FriendList_Screen", Icons.Filled.Person, "Friend"),
+        BottomItem("Analytics_Screen", Icons.Filled.Info, "Analytics"),
         BottomItem("Settings_Screen", Icons.Filled.Settings, "Settings")
     )
 

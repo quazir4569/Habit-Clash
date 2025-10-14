@@ -10,6 +10,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,6 +36,7 @@ import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,6 +58,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
@@ -84,7 +87,8 @@ val milestoneBadges = listOf(
 fun DashboardScreen(
     navController: NavHostController,
     authViewModel: AuthViewModel,
-    themeViewModel: ThemeViewModel
+    themeViewModel: ThemeViewModel,
+    viewModel: GameViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val authState = authViewModel.authState.observeAsState()
@@ -97,6 +101,8 @@ fun DashboardScreen(
     var completeDialog by remember { mutableStateOf(false) }
     var progress by remember { mutableFloatStateOf(0f) }
     var showDialog by remember { mutableStateOf(false) }
+    var showFriendDialog by remember {mutableStateOf(false)}
+    var showMultiplayerLeaderboardDialog by remember { mutableStateOf(false)}
 
     val todayKey = remember { StreakCalculator.getTodayKey() }
 
@@ -115,6 +121,7 @@ fun DashboardScreen(
     LaunchedEffect(Unit) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return@LaunchedEffect
         val db = FirebaseFirestore.getInstance()
+        viewModel.loadFriends()
 
         db.collection("users")
             .document(userId)
@@ -269,16 +276,48 @@ fun DashboardScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        Button(onClick = { showDialog = true
-
-                            fetchLeaderboard { data ->
-                                leaderboard = data
-                            }}
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Show Leaderboard",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = colors.textColor)
+
+                            Button(onClick = {
+                                showDialog = true
+
+                                fetchLeaderboard { data ->
+                                    leaderboard = data
+                                }
+                            }
+                            ) {
+                                Text(
+                                    "Leaderboard",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = colors.textColor
+                                )
+                            }
+                            Button(onClick = {
+                                showMultiplayerLeaderboardDialog = true
+                                viewModel.loadFriendsLeaderboard()
+                            }
+                            ) {
+                                Text(
+                                    "Multiplayer",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = colors.textColor
+                                )
+                            }
+
+                            if (showMultiplayerLeaderboardDialog) {
+                                MultiplayerDialog(
+                                    leaderboard = viewModel.leaderboard.value,
+                                    onDismiss = { showMultiplayerLeaderboardDialog = false }
+                                )
+                            }
+
+
                         }
                     }
                 }
@@ -317,6 +356,59 @@ fun DashboardScreen(
                                     showDialog = false
                                     navController.popBackStack()
                                 }) { Text("Return!") }
+                            }
+                        )
+                    }
+                }
+            }
+
+            if (showFriendDialog) {
+                Dialog(onDismissRequest = { showFriendDialog = false }) {
+                    AnimatedVisibility(
+                        visible = showFriendDialog,
+                        enter = fadeIn(animationSpec = tween(500)) + scaleIn(initialScale = 0.8f),
+                        exit = fadeOut(animationSpec = tween(300)) + scaleOut(targetScale = 0.8f)
+                    ) {
+
+                        AlertDialog(
+                            onDismissRequest = { showFriendDialog = false },
+                            title = { Text("Add a Friend") },
+                            text = {
+                                Column {
+                                    OutlinedTextField(
+                                        value = username,
+                                        onValueChange = { username = it },
+                                        label = { Text("Enter player's name") },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+
+                                    viewModel.addFriendMessage?.let {
+                                        Text(
+                                            text = it,
+                                            color = if (it.contains(
+                                                    "success",
+                                                    true
+                                                )
+                                            ) Color.Green else Color.Red,
+                                            modifier = Modifier.padding(top = 6.dp)
+                                        )
+                                    }
+                                }
+                            },
+                            confirmButton = {
+                                Button(onClick = {
+                                    if (username.isNotBlank()) {
+                                        viewModel.addFriendByUsername(username.trim())
+                                        username = ""
+                                    }
+                                }) {
+                                    Text("Add")
+                                }
+                            },
+                            dismissButton = {
+                                Button(onClick = { showFriendDialog = false }) {
+                                    Text("Cancel")
+                                }
                             }
                         )
                     }
@@ -597,4 +689,58 @@ fun fetchLeaderboard(onResult: (List<LeaderboardEntry>) -> Unit) {
             Log.e("Firestore", "Error fetching leaderboard", e)
             onResult(emptyList())
         }
+}
+
+@Composable
+fun MultiplayerDialog(
+    leaderboard: List<LeaderboardEntry>,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        AnimatedVisibility(
+            visible = true,
+            enter = fadeIn(animationSpec = tween(400)) + scaleIn(initialScale = 0.8f),
+            exit = fadeOut(animationSpec = tween(300)) + scaleOut(targetScale = 0.8f)
+        ) {
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text("Leaderboard") },
+                text = {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Rank", fontWeight = FontWeight.Bold)
+                            Text("Name", fontWeight = FontWeight.Bold)
+                            Text("Score", fontWeight = FontWeight.Bold)
+                        }
+
+                        HorizontalDivider(
+                            Modifier.padding(vertical = 4.dp),
+                            thickness = DividerDefaults.Thickness,
+                            color = Color.Blue
+                        )
+
+                        leaderboard.forEach { entry ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(entry.rank.toString())
+                                Text(entry.name)
+                                Text(entry.score.toString())
+                            }
+                            HorizontalDivider()
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = onDismiss) {
+                        Text("Close")
+                    }
+                }
+            )
+        }
+    }
 }

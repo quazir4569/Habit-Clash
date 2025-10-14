@@ -38,6 +38,10 @@ fun NavigationApp(
                 DashboardScreen(navController, authViewModel, themeViewModel)
             }
 
+            composable("FriendList_Screen") {
+                FriendListScreen(navController,  themeViewModel)
+            }
+
             // Add Habit
             composable("AddHabit_Screen") {
                 AddHabitScreen(navController, themeViewModel)
