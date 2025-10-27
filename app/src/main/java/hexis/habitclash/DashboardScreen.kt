@@ -101,8 +101,8 @@ fun DashboardScreen(
     var completeDialog by remember { mutableStateOf(false) }
     var progress by remember { mutableFloatStateOf(0f) }
     var showDialog by remember { mutableStateOf(false) }
-    var showFriendDialog by remember {mutableStateOf(false)}
-    var showMultiplayerLeaderboardDialog by remember { mutableStateOf(false)}
+    var showFriendDialog by remember { mutableStateOf(false) }
+    var showMultiplayerLeaderboardDialog by remember { mutableStateOf(false) }
 
     val todayKey = remember { StreakCalculator.getTodayKey() }
 
@@ -139,12 +139,18 @@ fun DashboardScreen(
             }
     }
 
+    LaunchedEffect(progress) {
+        if (progress == 1f) {
+            completeDialog = true
+        }
+    }
+
     if (authState.value is AuthState.Unauthenticated) {
         LaunchedEffect(Unit) { navController.navigate("Login_Screen") }
     }
 
     progress = if (totalHabits > 0) completedHabits.toFloat() / totalHabits else 0f
-    if (progress == 1f && totalHabits > 0 && !completeDialog) completeDialog = true
+    /*if (progress == 1f && !completeDialog) {completeDialog = true}*/
 
     Column(
         modifier = Modifier
@@ -195,7 +201,7 @@ fun DashboardScreen(
                             color = colors.textColor
                         )
                         Spacer(modifier = Modifier.height(6.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically){
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
                                 shape = RoundedCornerShape(50),
                                 color = colors.accentColor,
@@ -222,12 +228,12 @@ fun DashboardScreen(
                             )
                         }
                         Spacer(modifier = Modifier.height(6.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically){
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = "Tier: ${currentTier.label}",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = when(currentTier){
+                                color = when (currentTier) {
                                     StreakCalculator.Tier.BRONZE -> Color(0xFFCD7F32)
                                     StreakCalculator.Tier.SILVER -> Color(0xFFC0C0C0)
                                     StreakCalculator.Tier.GOLD -> Color(0xFFFFD700)
@@ -246,7 +252,8 @@ fun DashboardScreen(
                         )
                         Row {
                             achievedBadges.forEach { badge ->
-                                val badgeColor = if (badge.isAchieved) Color(0xFF4CAF50) else Color.Gray
+                                val badgeColor =
+                                    if (badge.isAchieved) Color(0xFF4CAF50) else Color.Gray
                                 Box(
                                     modifier = Modifier
                                         .size(38.dp)
@@ -323,6 +330,22 @@ fun DashboardScreen(
                 }
             }
 
+            if (completeDialog) {
+                AlertDialog(
+                    onDismissRequest = { completeDialog = false },
+                    title = { Text("Congratulation!") },
+                    text = { Text("You finished your daily habits!") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            completeDialog = false
+                        }) {
+                            Text("Lets Go back!")
+                        }
+                    }
+                )
+            }
+
+
             if (showDialog) {
                 Dialog(onDismissRequest = { showDialog = false }) {
                     AnimatedVisibility(
@@ -334,12 +357,18 @@ fun DashboardScreen(
                             onDismissRequest = { showDialog = false },
                             title = { Text("Leaderboard") },
                             text = {
-                                Column {
-                                    Row { Text("Rank", Modifier.weight(1f)); Text("Name", Modifier.weight(3f)); Text("Score", Modifier.weight(2f)) }
+                                Column (modifier = Modifier.fillMaxWidth()){
+                                    Row (modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween)
+                                    {
+                                        Text("Rank", Modifier.weight(1f))
+                                        Text("Name", Modifier.weight(3f)
+                                    ); Text("Score", Modifier.weight(2f))
+                                    }
                                     HorizontalDivider(
-                                        Modifier,
-                                        DividerDefaults.Thickness,
-                                        color = Color.Gray
+                                        Modifier.padding(vertical = 4.dp),
+                                        thickness = DividerDefaults.Thickness,
+                                        color = Color.Blue
                                     )
                                     leaderboard.forEach { entry ->
                                         Row {
@@ -347,14 +376,13 @@ fun DashboardScreen(
                                             Text(entry.name, Modifier.weight(3f))
                                             Text(entry.score.toString(), Modifier.weight(2f))
                                         }
-                                        HorizontalDivider(thickness = 0.5.dp, color = Color.Gray)
+                                        HorizontalDivider()
                                     }
                                 }
                             },
                             confirmButton = {
                                 TextButton(onClick = {
                                     showDialog = false
-                                    navController.popBackStack()
                                 }) { Text("Return!") }
                             }
                         )
@@ -562,8 +590,10 @@ fun DashboardScreen(
                                                 ).show()
                                             }
                                         }
-                                        val checkedCount = habits.count { it.completionDates.contains(todayKey) }
-                                        progress = if (habits.isNotEmpty()) checkedCount.toFloat() / habits.size else 0f
+                                        val checkedCount =
+                                            habits.count { it.completionDates.contains(todayKey) }
+                                        progress =
+                                            if (habits.isNotEmpty()) checkedCount.toFloat() / habits.size else 0f
                                     }
                                 )
 
@@ -704,7 +734,7 @@ fun MultiplayerDialog(
         ) {
             AlertDialog(
                 onDismissRequest = onDismiss,
-                title = { Text("Leaderboard") },
+                title = { Text("Multiplayer Leaderboard") },
                 text = {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Row(
@@ -737,7 +767,7 @@ fun MultiplayerDialog(
                 },
                 confirmButton = {
                     TextButton(onClick = onDismiss) {
-                        Text("Close")
+                        Text("Return!")
                     }
                 }
             )
