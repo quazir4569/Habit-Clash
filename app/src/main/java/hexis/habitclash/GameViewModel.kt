@@ -21,6 +21,7 @@ class GameViewModel : ViewModel() {
     var leaderboard = mutableStateOf<List<LeaderboardEntry>>(emptyList())
         private set
 
+
     fun loadFriends() {
         repo.getFriends { list -> friends = list }
     }
@@ -31,29 +32,22 @@ class GameViewModel : ViewModel() {
 
 
     fun addFriendByUsername(username: String) {
-        repo.addFriendByUsername(
-            username,
-            onSuccess = {
-                addFriendMessage = "Friend added successfully!"
-                loadFriends()
-            },
-            onError = { msg ->
-                addFriendMessage = msg
-            }
-        )
+        repo.addFriendByUsername(username, onSuccess = {
+            addFriendMessage = "Friend added successfully!"
+            loadFriends()
+        }, onError = { msg ->
+            addFriendMessage = msg
+        })
     }
 
     fun deleteFriend(friendId: String) {
-        repo.deleteFriendByUserId(
-            friendId,
-            onSuccess = {
-                deleteFriendMessage = "Friend deleted successfully!"
-                loadFriends()
-            },
-            onError = { msg ->
-                deleteFriendMessage = msg
-            }
-        )
-    }
+        repo.deleteFriendByUserId(friendId, onSuccess = {
+            friends = friends.filterNot { it == friendId }
+            deleteFriendMessage = "Friend deleted successfully!"
 
+
+        }, onError = { msg ->
+            deleteFriendMessage = msg
+        })
+    }
 }

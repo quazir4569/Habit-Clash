@@ -47,12 +47,13 @@ fun FriendListScreen(
 ) {
 
     val isDarkMode = themeViewModel.isDarkMode
-    var username by remember { mutableStateOf("User") }
+    var username by remember { mutableStateOf("") }
     var showFriendDialog by remember { mutableStateOf(false) }
     val friends = viewModel.friends ?: emptyList()
     val colors = getAppThemeColors(isDarkMode)
 
     LaunchedEffect(Unit) {
+
         viewModel.loadFriends()
 
     }
@@ -99,7 +100,11 @@ fun FriendListScreen(
                         ) {
                             Text(text = friendId)
 
-                            Button(onClick = { viewModel.deleteFriend(friendId) }) {
+                            Button(onClick = {
+                                viewModel.deleteFriend(friendId)
+
+
+                            }) {
 
                                 Text("Delete")
                             }
@@ -184,19 +189,18 @@ class GameRepository {
                 return@addOnSuccessListener
             }
 
-            // Firestore whereIn supports up to 10 items — if <=10 we do a single query
-            if (friendIds.size <= 10) {
+
+            if (friendIds.size <= 40) {
                 db.collection("users").whereIn(FieldPath.documentId(), friendIds).get()
                     .addOnSuccessListener { snapshot ->
-                        val usernames =
-                            snapshot.documents.mapNotNull { it.getString("username") }
+                        val usernames = snapshot.documents.mapNotNull { it.getString("username") }
                         onResult(usernames)
                     }.addOnFailureListener {
                         onResult(emptyList())
                     }
             } else {
-                // simple batching for >10 friends
-                val chunks = friendIds.chunked(10)
+
+                val chunks = friendIds.chunked(40)
                 val names = mutableListOf<String>()
                 var remaining = chunks.size
 
@@ -207,7 +211,6 @@ class GameRepository {
                             remaining -= 1
                             if (remaining == 0) onResult(names)
                         }.addOnFailureListener {
-                            // fail-fast or you can continue; here we return empty list
                             onResult(emptyList())
                         }
                 }
@@ -236,7 +239,6 @@ class GameRepository {
                     return@addOnSuccessListener
                 }
 
-                // Add friend UID to current user’s 'friends' array
                 db.collection("users").document(currentUserId)
                     .update("friends", FieldValue.arrayUnion(friendId))
                     .addOnSuccessListener { onSuccess() }
@@ -252,7 +254,8 @@ class GameRepository {
 
         db.collection("users").document(currentUserId)
             .update("friends", FieldValue.arrayRemove(friendId)).addOnSuccessListener {
-                onSuccess()
+                onSuccess(
+                )
             }.addOnFailureListener { e ->
                 onError(e.message ?: "Failed to delete friend.")
             }
@@ -275,8 +278,7 @@ class GameRepository {
             var processedCount = 0
 
             allIds.forEach { friendId ->
-                db.collection("users").document(friendId).get()
-                    .addOnSuccessListener { friendDoc ->
+                db.collection("users").document(friendId).get().addOnSuccessListener { friendDoc ->
                         val username = friendDoc.getString("username") ?: "Unknown"
 
                         friendDoc.reference.collection("completion_logs").get()
@@ -297,4 +299,6 @@ class GameRepository {
             onResult(emptyList())
         }
     }
+
+
 }

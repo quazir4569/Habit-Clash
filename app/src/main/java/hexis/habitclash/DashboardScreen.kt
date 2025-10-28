@@ -115,7 +115,7 @@ fun DashboardScreen(
     val currentTier = StreakCalculator.getTierForStreak(totalCurrentStreak)
     val bestStreak = habits.maxOfOrNull { it.longestStreak } ?: 0
     val totalHabits = habits.size
-    val completedHabits = habits.count { it.completionDates.contains(todayKey) }
+    var completedHabits = habits.count { it.completionDates.contains(todayKey) }
     var leaderboard by remember { mutableStateOf<List<LeaderboardEntry>>(emptyList()) }
 
     // Compute badges achieved (scalable for future milestones)
@@ -191,7 +191,7 @@ fun DashboardScreen(
                             painter = logo,
                             contentDescription = null,
                             modifier = Modifier
-                                .size(80.dp)
+                                .size(60.dp)
                         )
                         Box(
                             modifier = Modifier
@@ -601,7 +601,7 @@ fun DashboardScreen(
                                     OutlinedTextField(
                                         value = username,
                                         onValueChange = { username = it },
-                                        label = { Text("Enter player's name") },
+                                        label = { Text("Enter user's name") },
                                         modifier = Modifier.fillMaxWidth()
                                     )
 
