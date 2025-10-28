@@ -1,13 +1,13 @@
 package hexis.habitclash
 
 import android.util.Log
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -54,7 +54,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontWeight.Companion.Bold
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -63,6 +65,7 @@ import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import hexis.habitclash.StreakCalculator.getTodayKey
 import hexis.habitclash.ui.theme.AppThemeColors
 import hexis.habitclash.ui.theme.getAppThemeColors
 import kotlin.math.max
@@ -96,6 +99,8 @@ fun DashboardScreen(
     val isDarkMode = themeViewModel.isDarkMode
     val colors = getAppThemeColors(isDarkMode)
     val scrollState = rememberScrollState()
+    val imageUrl = remember { mutableStateOf("") }
+    val logo = painterResource(R.drawable.hc)
 
     var username by remember { mutableStateOf("User") }
     var completeDialog by remember { mutableStateOf(false) }
@@ -165,6 +170,7 @@ fun DashboardScreen(
                 .padding(horizontal = 24.dp)
                 .verticalScroll(scrollState)
         ) {
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -178,26 +184,37 @@ fun DashboardScreen(
                         .padding(21.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(60.dp)
-                            .clip(CircleShape)
-                            .background(colors.accentColor),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Profile",
-                            tint = Color.White,
-                            modifier = Modifier.size(36.dp)
+                    Column {
+
+
+                        Image(
+                            painter = logo,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(80.dp)
                         )
+                        Box(
+                            modifier = Modifier
+                                .size(60.dp)
+                                .clip(CircleShape)
+                                .background(colors.accentColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Profile",
+                                tint = Color.White,
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
                     }
+
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             "Hello, @$username",
                             fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.Medium,
                             color = colors.textColor
                         )
                         Spacer(modifier = Modifier.height(6.dp))
@@ -262,9 +279,9 @@ fun DashboardScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        badge.name.take(2),  // Show first two letters (e.g. "7-" for 7-day)
+                                        badge.name.take(2),
                                         color = Color.White,
-                                        fontWeight = FontWeight.Bold,
+                                        fontWeight = Bold,
                                         fontSize = 13.sp,
                                         modifier = Modifier.padding(4.dp)
                                     )
@@ -330,119 +347,6 @@ fun DashboardScreen(
                 }
             }
 
-            if (completeDialog) {
-                AlertDialog(
-                    onDismissRequest = { completeDialog = false },
-                    title = { Text("Congratulation!") },
-                    text = { Text("You finished your daily habits!") },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            completeDialog = false
-                        }) {
-                            Text("Lets Go back!")
-                        }
-                    }
-                )
-            }
-
-
-            if (showDialog) {
-                Dialog(onDismissRequest = { showDialog = false }) {
-                    AnimatedVisibility(
-                        visible = showDialog,
-                        enter = fadeIn(animationSpec = tween(500)) + scaleIn(initialScale = 0.8f),
-                        exit = fadeOut(animationSpec = tween(300)) + scaleOut(targetScale = 0.8f)
-                    ) {
-                        AlertDialog(
-                            onDismissRequest = { showDialog = false },
-                            title = { Text("Leaderboard") },
-                            text = {
-                                Column (modifier = Modifier.fillMaxWidth()){
-                                    Row (modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween)
-                                    {
-                                        Text("Rank", Modifier.weight(1f))
-                                        Text("Name", Modifier.weight(3f)
-                                    ); Text("Score", Modifier.weight(2f))
-                                    }
-                                    HorizontalDivider(
-                                        Modifier.padding(vertical = 4.dp),
-                                        thickness = DividerDefaults.Thickness,
-                                        color = Color.Blue
-                                    )
-                                    leaderboard.forEach { entry ->
-                                        Row {
-                                            Text(entry.rank.toString(), Modifier.weight(1f))
-                                            Text(entry.name, Modifier.weight(3f))
-                                            Text(entry.score.toString(), Modifier.weight(2f))
-                                        }
-                                        HorizontalDivider()
-                                    }
-                                }
-                            },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    showDialog = false
-                                }) { Text("Return!") }
-                            }
-                        )
-                    }
-                }
-            }
-
-            if (showFriendDialog) {
-                Dialog(onDismissRequest = { showFriendDialog = false }) {
-                    AnimatedVisibility(
-                        visible = showFriendDialog,
-                        enter = fadeIn(animationSpec = tween(500)) + scaleIn(initialScale = 0.8f),
-                        exit = fadeOut(animationSpec = tween(300)) + scaleOut(targetScale = 0.8f)
-                    ) {
-
-                        AlertDialog(
-                            onDismissRequest = { showFriendDialog = false },
-                            title = { Text("Add a Friend") },
-                            text = {
-                                Column {
-                                    OutlinedTextField(
-                                        value = username,
-                                        onValueChange = { username = it },
-                                        label = { Text("Enter player's name") },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-
-                                    viewModel.addFriendMessage?.let {
-                                        Text(
-                                            text = it,
-                                            color = if (it.contains(
-                                                    "success",
-                                                    true
-                                                )
-                                            ) Color.Green else Color.Red,
-                                            modifier = Modifier.padding(top = 6.dp)
-                                        )
-                                    }
-                                }
-                            },
-                            confirmButton = {
-                                Button(onClick = {
-                                    if (username.isNotBlank()) {
-                                        viewModel.addFriendByUsername(username.trim())
-                                        username = ""
-                                    }
-                                }) {
-                                    Text("Add")
-                                }
-                            },
-                            dismissButton = {
-                                Button(onClick = { showFriendDialog = false }) {
-                                    Text("Cancel")
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -456,7 +360,7 @@ fun DashboardScreen(
                     Text(
                         "Habit Progress",
                         fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = Bold,
                         color = colors.textColor
                     )
 
@@ -479,7 +383,7 @@ fun DashboardScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         "Daily Habits",
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = Bold,
                         fontSize = 19.sp,
                         color = colors.textColor,
                         modifier = Modifier.padding(top = 12.dp, bottom = 12.dp)
@@ -579,7 +483,7 @@ fun DashboardScreen(
                                                 }
                                             }
 
-                                            if (isChecked && newCurrent > 0) {
+                                            /*if (isChecked && newCurrent > 0) {
                                                 Toast.makeText(
                                                     context,
                                                     StreakCalculator.getStreakMessage(
@@ -588,7 +492,7 @@ fun DashboardScreen(
                                                     ),
                                                     Toast.LENGTH_SHORT
                                                 ).show()
-                                            }
+                                            }*/
                                         }
                                         val checkedCount =
                                             habits.count { it.completionDates.contains(todayKey) }
@@ -606,6 +510,133 @@ fun DashboardScreen(
                             }
                             if (index < habits.size - 1) Spacer(modifier = Modifier.height(24.dp))
                         }
+                    }
+                }
+            }
+
+            if (completeDialog) {
+                AlertDialog(
+                    onDismissRequest = { completeDialog = false },
+                    title = { Text("Congratulation!") },
+                    text = { Text("You finished your daily habits!") },
+                    confirmButton = {
+
+
+
+                        TextButton(onClick = {
+                            completeDialog = false
+
+
+
+                        }) {
+                            Text("Lets Go back!")
+                        }
+                    }
+                )
+            }
+
+            if (showDialog) {
+                Dialog(onDismissRequest = { showDialog = false }) {
+                    AnimatedVisibility(
+                        visible = showDialog,
+                        enter = fadeIn(animationSpec = tween(500)) + scaleIn(initialScale = 0.8f),
+                        exit = fadeOut(animationSpec = tween(300)) + scaleOut(targetScale = 0.8f)
+                    ) {
+                        AlertDialog(
+                            onDismissRequest = { showDialog = false },
+                            title = { Text("Leaderboard") },
+                            text = {
+
+
+                                Column (modifier = Modifier.fillMaxWidth()){
+                                    Row (modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween)
+                                    {
+                                        Text("Rank", fontWeight = Bold)
+                                        Text("Name", fontWeight = Bold)
+                                        Text("Score", fontWeight = Bold)
+                                    }
+                                    HorizontalDivider(
+                                        Modifier.padding(vertical = 4.dp),
+                                        thickness = DividerDefaults.Thickness,
+                                        color = Color.Blue
+                                    )
+                                    leaderboard.forEach { entry ->
+                                        Row (modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text(entry.rank.toString())
+                                            Text(entry.name)
+                                            Text(entry.score.toString())
+                                        }
+                                        HorizontalDivider()
+                                    }
+                                }
+                            },
+
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    showDialog = false
+
+
+                                }) { Text("Return!") }
+                            }
+                        )
+                    }
+                }
+            }
+
+            if (showFriendDialog) {
+                Dialog(onDismissRequest = { showFriendDialog = false }) {
+                    AnimatedVisibility(
+                        visible = showFriendDialog,
+                        enter = fadeIn(animationSpec = tween(500)) + scaleIn(initialScale = 0.8f),
+                        exit = fadeOut(animationSpec = tween(300)) + scaleOut(targetScale = 0.8f)
+                    ) {
+
+                        AlertDialog(
+                            onDismissRequest = { showFriendDialog = false },
+                            title = { Text("Add a Friend") },
+                            text = {
+                                Column {
+                                    OutlinedTextField(
+                                        value = username,
+                                        onValueChange = { username = it },
+                                        label = { Text("Enter player's name") },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+
+                                    viewModel.addFriendMessage?.let {
+                                        Text(
+                                            text = it,
+                                            color = if (it.contains(
+                                                    "success",
+                                                    true
+                                                )
+                                            ) Color.Green else Color.Red,
+                                            modifier = Modifier.padding(top = 6.dp)
+                                        )
+                                    }
+                                }
+                            },
+                            confirmButton = {
+                                Button(onClick = {
+                                    if (username.isNotBlank()) {
+                                        viewModel.addFriendByUsername(username.trim())
+                                        username = ""
+                                    }
+                                }) {
+                                    Text("Add")
+                                }
+                            },
+                            dismissButton = {
+                                Button(onClick = { showFriendDialog = false
+
+
+                                }) {
+                                    Text("Cancel")
+                                }
+                            }
+                        )
                     }
                 }
             }
@@ -741,9 +772,9 @@ fun MultiplayerDialog(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Rank", fontWeight = FontWeight.Bold)
-                            Text("Name", fontWeight = FontWeight.Bold)
-                            Text("Score", fontWeight = FontWeight.Bold)
+                            Text("Rank", fontWeight = Bold)
+                            Text("Name", fontWeight = Bold)
+                            Text("Score", fontWeight = Bold)
                         }
 
                         HorizontalDivider(

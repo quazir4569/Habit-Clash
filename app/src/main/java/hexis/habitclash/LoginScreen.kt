@@ -1,6 +1,7 @@
 package hexis.habitclash
 
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -35,6 +37,7 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, them
     val context = LocalContext.current
     val isDarkMode = themeViewModel.isDarkMode
     val colors = getAppThemeColors(isDarkMode)
+    val logo = painterResource(R.drawable.hc)
 
     // Handle navigation based on auth state
     LaunchedEffect(authState.value) {
@@ -57,6 +60,13 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, them
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+
+        Image(
+            painter = logo,
+            contentDescription = null,
+            modifier = Modifier
+                .size(200.dp)
+        )
         // Headline using Inter SemiBold font
         Text(
             text = "Login your Account",

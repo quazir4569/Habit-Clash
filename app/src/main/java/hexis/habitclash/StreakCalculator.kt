@@ -96,11 +96,11 @@ object StreakCalculator {
         return maxStreak
     }
 
-    /** Small friendly toast message for wins. */
-    fun getStreakMessage(current: Int, longest: Int): String = when {
-        current == 1 -> "Day 1 — nice start! 🌱"
-        current > longest -> "New best: $current days! 🏆"
+    // small friendly toast message for wins.
+    /*fun getstreakmessage(current: int, longest: int): string = when {
+        current == 1 -> "day 1 — nice start! 🌱"
+        current > longest -> "new best: $current days! 🏆"
         current % 30 == 0 -> "🔥 $current-day streak!"
         else -> "$current days strong! 💪"
-    }
+    }*/
 }
