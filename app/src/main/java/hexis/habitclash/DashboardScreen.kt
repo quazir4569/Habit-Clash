@@ -53,7 +53,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontWeight.Companion.Bold
@@ -65,7 +64,6 @@ import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import hexis.habitclash.StreakCalculator.getTodayKey
 import hexis.habitclash.ui.theme.AppThemeColors
 import hexis.habitclash.ui.theme.getAppThemeColors
 import kotlin.math.max
@@ -93,13 +91,13 @@ fun DashboardScreen(
     themeViewModel: ThemeViewModel,
     viewModel: GameViewModel = viewModel()
 ) {
-    val context = LocalContext.current
+    /*val context = LocalContext.current*/
     val authState = authViewModel.authState.observeAsState()
     val habits = remember { mutableStateListOf<Habit>() }
     val isDarkMode = themeViewModel.isDarkMode
     val colors = getAppThemeColors(isDarkMode)
     val scrollState = rememberScrollState()
-    val imageUrl = remember { mutableStateOf("") }
+    /*val imageUrl = remember { mutableStateOf("") }*/
     val logo = painterResource(R.drawable.hc)
 
     var username by remember { mutableStateOf("User") }
@@ -115,7 +113,7 @@ fun DashboardScreen(
     val currentTier = StreakCalculator.getTierForStreak(totalCurrentStreak)
     val bestStreak = habits.maxOfOrNull { it.longestStreak } ?: 0
     val totalHabits = habits.size
-    var completedHabits = habits.count { it.completionDates.contains(todayKey) }
+    val completedHabits = habits.count { it.completionDates.contains(todayKey) }
     var leaderboard by remember { mutableStateOf<List<LeaderboardEntry>>(emptyList()) }
 
     // Compute badges achieved (scalable for future milestones)
@@ -524,8 +522,8 @@ fun DashboardScreen(
 
 
                         TextButton(onClick = {
-                            completeDialog = false
 
+                            completeDialog = false
 
 
                         }) {

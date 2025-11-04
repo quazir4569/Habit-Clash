@@ -1,5 +1,6 @@
 package hexis.habitclash
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -37,6 +38,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
 import hexis.habitclash.ui.theme.getAppThemeColors
 
 @Composable
@@ -73,7 +75,6 @@ fun FriendListScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            // Headline using Inter SemiBold font
             Text(
                 text = "Friend List", style = MaterialTheme.typography.titleLarge
             )
@@ -85,7 +86,7 @@ fun FriendListScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                items(friends) { friendId ->
+                items(friends) { friend ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -98,21 +99,18 @@ fun FriendListScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(text = friendId)
+                            Text(text = friend.username)
 
                             Button(onClick = {
-                                viewModel.deleteFriend(friendId)
-
-
+                                viewModel.deleteFriend(friend)
                             }) {
-
                                 Text("Delete")
                             }
-
                         }
                     }
                 }
             }
+
         }
         BottomNavigationBar(navController, isDarkMode)
 
@@ -176,49 +174,48 @@ class GameRepository {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
-    fun getFriends(onResult: (List<String>) -> Unit) {
+
+
+    fun getFriends(onResult: (List<Friend>) -> Unit) {
         val userId = auth.currentUser?.uid ?: run {
             onResult(emptyList())
             return
         }
 
-        db.collection("users").document(userId).get().addOnSuccessListener { doc ->
-            val friendIds = doc.get("friends") as? List<String> ?: emptyList()
-            if (friendIds.isEmpty()) {
-                onResult(emptyList())
-                return@addOnSuccessListener
-            }
+        db.collection("users").document(userId).get(Source.SERVER)
+            .addOnSuccessListener { doc ->
+                val friendIds = doc.get("friends") as? List<String> ?: emptyList()
+                if (friendIds.isEmpty()) {
+                    onResult(emptyList())
+                    return@addOnSuccessListener
+                }
 
-
-            if (friendIds.size <= 40) {
-                db.collection("users").whereIn(FieldPath.documentId(), friendIds).get()
-                    .addOnSuccessListener { snapshot ->
-                        val usernames = snapshot.documents.mapNotNull { it.getString("username") }
-                        onResult(usernames)
-                    }.addOnFailureListener {
-                        onResult(emptyList())
-                    }
-            } else {
-
+                // chunking for whereIn limit
                 val chunks = friendIds.chunked(40)
-                val names = mutableListOf<String>()
+                val friends = mutableListOf<Friend>()
                 var remaining = chunks.size
 
                 chunks.forEach { chunk ->
                     db.collection("users").whereIn(FieldPath.documentId(), chunk).get()
                         .addOnSuccessListener { snapshot ->
-                            names += snapshot.documents.mapNotNull { it.getString("username") }
+                            friends += snapshot.documents.mapNotNull { d ->
+                                val username = d.getString("username")
+                                val id = d.id
+                                if (username != null) Friend(id, username) else null
+                            }
                             remaining -= 1
-                            if (remaining == 0) onResult(names)
-                        }.addOnFailureListener {
+                            if (remaining == 0) onResult(friends)
+                        }
+                        .addOnFailureListener {
                             onResult(emptyList())
                         }
                 }
             }
-        }.addOnFailureListener {
-            onResult(emptyList())
-        }
+            .addOnFailureListener {
+                onResult(emptyList())
+            }
     }
+
 
 
     fun addFriendByUsername(username: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
@@ -249,17 +246,22 @@ class GameRepository {
     }
 
     fun deleteFriendByUserId(friendId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
-
-        val currentUserId = auth.currentUser?.uid ?: return
+        val currentUserId = auth.currentUser?.uid ?: return onError("User not logged in.")
+        Log.d("FriendsRepo", "Deleting friendId=$friendId from user=$currentUserId")
 
         db.collection("users").document(currentUserId)
-            .update("friends", FieldValue.arrayRemove(friendId)).addOnSuccessListener {
-                onSuccess(
-                )
-            }.addOnFailureListener { e ->
+            .update("friends", FieldValue.arrayRemove(friendId))
+            .addOnSuccessListener {
+                Log.d("FriendsRepo", "Successfully removed $friendId")
+                onSuccess()
+            }
+            .addOnFailureListener { e ->
+                Log.e("FriendsRepo", "Error deleting friend", e)
                 onError(e.message ?: "Failed to delete friend.")
             }
     }
+
+
 
     fun getFriendsLeaderboard(onResult: (List<LeaderboardEntry>) -> Unit) {
         val db = FirebaseFirestore.getInstance()
@@ -299,6 +301,4 @@ class GameRepository {
             onResult(emptyList())
         }
     }
-
-
 }

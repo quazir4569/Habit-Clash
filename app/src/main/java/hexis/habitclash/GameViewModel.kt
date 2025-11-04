@@ -1,5 +1,6 @@
 package hexis.habitclash
 
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -9,8 +10,8 @@ class GameViewModel : ViewModel() {
     private val repo = GameRepository()
 
 
-    var friends by mutableStateOf<List<String>>(emptyList())
-        private set
+    var friends by mutableStateOf<List<Friend>>(emptyList())
+
 
     var addFriendMessage by mutableStateOf<String?>(null)
         private set
@@ -21,15 +22,15 @@ class GameViewModel : ViewModel() {
     var leaderboard = mutableStateOf<List<LeaderboardEntry>>(emptyList())
         private set
 
-
     fun loadFriends() {
-        repo.getFriends { list -> friends = list }
+        repo.getFriends { list ->
+            friends = list
+        }
     }
 
     fun loadFriendsLeaderboard() {
         repo.getFriendsLeaderboard { leaderboard.value = it }
     }
-
 
     fun addFriendByUsername(username: String) {
         repo.addFriendByUsername(username, onSuccess = {
@@ -40,14 +41,13 @@ class GameViewModel : ViewModel() {
         })
     }
 
-    fun deleteFriend(friendId: String) {
-        repo.deleteFriendByUserId(friendId, onSuccess = {
-            friends = friends.filterNot { it == friendId }
-            deleteFriendMessage = "Friend deleted successfully!"
-
-
-        }, onError = { msg ->
-            deleteFriendMessage = msg
-        })
+    fun deleteFriend(friend: Friend) {
+        repo.deleteFriendByUserId(
+            friendId = friend.id,
+            onSuccess = {
+                friends = friends.filterNot { it.id == friend.id }
+            },
+            onError = { Log.e("FriendsVM", it) }
+        )
     }
 }
