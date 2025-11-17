@@ -1,5 +1,6 @@
 package hexis.habitclash
 
+import android.R.attr.visible
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -7,6 +8,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,8 +43,12 @@ import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
+import hexis.habitclash.Friend
+import hexis.habitclash.LeaderboardEntry
 import hexis.habitclash.ui.theme.getAppThemeColors
+import kotlinx.coroutines.delay
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FriendListScreen(
     navController: NavHostController,
@@ -55,10 +63,10 @@ fun FriendListScreen(
     val colors = getAppThemeColors(isDarkMode)
 
     LaunchedEffect(Unit) {
-
         viewModel.loadFriends()
 
     }
+
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -86,11 +94,35 @@ fun FriendListScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                items(friends) { friend ->
+                items(friends, key = {it.id}) { friend ->
+
+                    var visible by remember {mutableStateOf(false)}
+                    var deleteFriendAnimation by remember { mutableStateOf(false) }
+
+                    LaunchedEffect(Unit) {
+                        visible = true
+                    }
+
+                    LaunchedEffect(deleteFriendAnimation) {
+                        if(deleteFriendAnimation){
+                            visible = false
+                            delay(300)
+                            viewModel.deleteFriend(friend)
+                        }
+                    }
+
+
+
+                    AnimatedVisibility(
+                        visible = visible,
+                        enter = fadeIn() + slideInVertically(initialOffsetY = { it / 4 }),
+                        exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 4 }),
+                    ) { }
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
+                            .animateItemPlacement()
                     ) {
                         Row(
                             modifier = Modifier
@@ -102,7 +134,10 @@ fun FriendListScreen(
                             Text(text = friend.username)
 
                             Button(onClick = {
-                                viewModel.deleteFriend(friend)
+
+                                deleteFriendAnimation = true
+
+
                             }) {
                                 Text("Delete")
                             }
