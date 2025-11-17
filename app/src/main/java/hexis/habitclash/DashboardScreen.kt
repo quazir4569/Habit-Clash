@@ -53,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontWeight.Companion.Bold
@@ -91,13 +92,12 @@ fun DashboardScreen(
     themeViewModel: ThemeViewModel,
     viewModel: GameViewModel = viewModel()
 ) {
-    /*val context = LocalContext.current*/
+    val context = LocalContext.current
     val authState = authViewModel.authState.observeAsState()
     val habits = remember { mutableStateListOf<Habit>() }
     val isDarkMode = themeViewModel.isDarkMode
     val colors = getAppThemeColors(isDarkMode)
     val scrollState = rememberScrollState()
-    /*val imageUrl = remember { mutableStateOf("") }*/
     val logo = painterResource(R.drawable.hc)
 
     var username by remember { mutableStateOf("User") }
@@ -183,7 +183,6 @@ fun DashboardScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-
 
                         Image(
                             painter = logo,
@@ -338,8 +337,6 @@ fun DashboardScreen(
                                     onDismiss = { showMultiplayerLeaderboardDialog = false }
                                 )
                             }
-
-
                         }
                     }
                 }
@@ -481,6 +478,15 @@ fun DashboardScreen(
                                                 }
                                             }
 
+                                            // motivational alert
+                                            if (isChecked && newCurrent > 0) {
+                                                MotivationalAlerts.checkAndShow(
+                                                    context = context,
+                                                    habitId = habit.id,
+                                                    currentStreak = newCurrent
+                                                )
+                                            }
+
                                             /*if (isChecked && newCurrent > 0) {
                                                 Toast.makeText(
                                                     context,
@@ -518,13 +524,9 @@ fun DashboardScreen(
                     title = { Text("Congratulation!") },
                     text = { Text("You finished your daily habits!") },
                     confirmButton = {
-
-
-
                         TextButton(onClick = {
 
                             completeDialog = false
-
 
                         }) {
                             Text("Lets Go back!")
@@ -545,11 +547,11 @@ fun DashboardScreen(
                             title = { Text("Leaderboard") },
                             text = {
 
-
-                                Column (modifier = Modifier.fillMaxWidth()){
-                                    Row (modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween)
-                                    {
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
                                         Text("Rank", fontWeight = Bold)
                                         Text("Name", fontWeight = Bold)
                                         Text("Score", fontWeight = Bold)
@@ -560,8 +562,10 @@ fun DashboardScreen(
                                         color = Color.Blue
                                     )
                                     leaderboard.forEach { entry ->
-                                        Row (modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
                                             Text(entry.rank.toString())
                                             Text(entry.name)
                                             Text(entry.score.toString())
@@ -574,7 +578,6 @@ fun DashboardScreen(
                             confirmButton = {
                                 TextButton(onClick = {
                                     showDialog = false
-
 
                                 }) { Text("Return!") }
                             }
@@ -627,10 +630,7 @@ fun DashboardScreen(
                                 }
                             },
                             dismissButton = {
-                                Button(onClick = { showFriendDialog = false
-
-
-                                }) {
+                                Button(onClick = { showFriendDialog = false }) {
                                     Text("Cancel")
                                 }
                             }
