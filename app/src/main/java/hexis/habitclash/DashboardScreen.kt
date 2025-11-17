@@ -2,6 +2,12 @@ package hexis.habitclash
 
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -53,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontWeight.Companion.Bold
@@ -64,6 +71,8 @@ import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import hexis.habitclash.Habit
+import hexis.habitclash.LeaderboardEntry
 import hexis.habitclash.ui.theme.AppThemeColors
 import hexis.habitclash.ui.theme.getAppThemeColors
 import kotlin.math.max
@@ -112,9 +121,24 @@ fun DashboardScreen(
     val totalCurrentStreak = habits.sumOf { it.currentStreak }
     val currentTier = StreakCalculator.getTierForStreak(totalCurrentStreak)
     val bestStreak = habits.maxOfOrNull { it.longestStreak } ?: 0
-    val totalHabits = habits.size
+    var totalHabits = habits.size
     val completedHabits = habits.count { it.completionDates.contains(todayKey) }
     var leaderboard by remember { mutableStateOf<List<LeaderboardEntry>>(emptyList()) }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "infinite transition")
+    val rotationAnimation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable
+            (tween (3000, easing = LinearEasing), repeatMode = RepeatMode.Restart), label = "rotation angle"
+    )
+
+    var rotated by remember { mutableStateOf(false) }
+    val rotationAngle by animateFloatAsState(
+        targetValue = if (rotated) 360f else 0f,
+        animationSpec = tween(durationMillis = 1000),
+        label = "rotationAnimation"
+    )
 
     // Compute badges achieved (scalable for future milestones)
     val achievedBadges = milestoneBadges.map { badge ->
@@ -155,6 +179,8 @@ fun DashboardScreen(
     progress = if (totalHabits > 0) completedHabits.toFloat() / totalHabits else 0f
     /*if (progress == 1f && !completeDialog) {completeDialog = true}*/
 
+
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -190,19 +216,26 @@ fun DashboardScreen(
                             contentDescription = null,
                             modifier = Modifier
                                 .size(60.dp)
-                        )
+                                .graphicsLayer { rotationZ = rotationAnimation }
+                                                      )
                         Box(
                             modifier = Modifier
                                 .size(60.dp)
                                 .clip(CircleShape)
+                                .clickable{rotated = !rotated}
                                 .background(colors.accentColor),
+
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Person,
                                 contentDescription = "Profile",
                                 tint = Color.White,
-                                modifier = Modifier.size(36.dp)
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .graphicsLayer {
+                                    rotationZ = rotationAngle
+                                }
                             )
                         }
                     }
@@ -524,6 +557,9 @@ fun DashboardScreen(
                         TextButton(onClick = {
 
                             completeDialog = false
+                            resetHabitCompletions(habits, todayKey)
+
+
 
 
                         }) {
@@ -643,6 +679,8 @@ fun DashboardScreen(
         BottomNavigationBar(navController, isDarkMode)
     }
 }
+
+
 
 @Composable
 fun HabitItem(
@@ -803,3 +841,34 @@ fun MultiplayerDialog(
         }
     }
 }
+
+
+fun resetHabitCompletions(habits: MutableList<Habit>, todayKey: String) {
+    val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+    val db = FirebaseFirestore.getInstance()
+
+    habits.forEachIndexed { index, habit ->
+        if (habit.completionDates.contains(todayKey)) {
+            val updatedDates = StreakCalculator.removeTodayCompletion(habit.completionDates, todayKey)
+            habits[index] = habit.copy(
+                isCompletedToday = false,
+                completionDates = updatedDates,
+                currentStreak = StreakCalculator.calculateCurrentStreak(updatedDates, todayKey),
+                totalCompletions = updatedDates.size
+            )
+
+            db.collection("users").document(userId)
+                .collection("habits").document(habit.id)
+                .update("completionDates", updatedDates, "isCompletedToday", false)
+
+            db.collection("users").document(userId)
+                .collection("completion_logs")
+                .document("${habit.id}_${todayKey}")
+                .delete()
+        }
+    }
+}
+
+
+
+
