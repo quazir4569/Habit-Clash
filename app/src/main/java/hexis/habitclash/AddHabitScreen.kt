@@ -64,11 +64,12 @@ fun AddHabitScreen(
     val categories = listOf("Health", "Productivity", "Personal", "Fitness", "Study")
     val frequencies = listOf("Daily", "Weekly", "Monthly")
     val reminderOptions = listOf("Morning", "Afternoon", "Evening")
+    val dodgerBlue = Color(0xFF1E90FF)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.backgroundColor)
+            .background(dodgerBlue)
     ) {
         Column(
             modifier = Modifier

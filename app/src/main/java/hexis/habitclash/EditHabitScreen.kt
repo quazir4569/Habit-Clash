@@ -62,6 +62,7 @@ fun EditHabitScreen(
     val isDarkMode = themeViewModel.isDarkMode
     val colors = getAppThemeColors(isDarkMode)
     val scrollState = rememberScrollState()
+    val dodgerBlue = Color(0xFF1E90FF)
 
     // fetch existing habit and prefill
     LaunchedEffect(habitId) {
@@ -90,7 +91,7 @@ fun EditHabitScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.backgroundColor)
+            .background(dodgerBlue)
     ) {
         Spacer(modifier = Modifier.height(52.dp))
 

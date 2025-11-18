@@ -108,6 +108,7 @@ fun DashboardScreen(
     val scrollState = rememberScrollState()
     /*val imageUrl = remember { mutableStateOf("") }*/
     val logo = painterResource(R.drawable.hc)
+    val dodgerBlue = Color(0xFF1E90FF)
 
     var username by remember { mutableStateOf("User") }
     var completeDialog by remember { mutableStateOf(false) }
@@ -184,7 +185,7 @@ fun DashboardScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.backgroundColor)
+            .background(dodgerBlue)
     ) {
         Spacer(modifier = Modifier.height(52.dp))
 

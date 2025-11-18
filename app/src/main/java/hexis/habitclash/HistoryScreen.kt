@@ -41,6 +41,7 @@ fun HistoryScreen(
     var loading by remember { mutableStateOf(true) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
     val uid = FirebaseAuth.getInstance().currentUser?.uid
+    val dodgerBlue = Color(0xFF1E90FF)
 
     LaunchedEffect(uid) {
         // if not signed in, stop loading and show a message
@@ -101,7 +102,7 @@ fun HistoryScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.backgroundColor)
+            .background(dodgerBlue)
     ) {
         TopAppBar(
             title = { Text("History Log", color = colors.textColor, fontWeight = FontWeight.SemiBold) },

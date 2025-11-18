@@ -11,6 +11,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -61,6 +62,7 @@ fun FriendListScreen(
     var showFriendDialog by remember { mutableStateOf(false) }
     val friends = viewModel.friends ?: emptyList()
     val colors = getAppThemeColors(isDarkMode)
+    val DodgerBlue = Color(0xFF1E90FF)
 
     LaunchedEffect(Unit) {
         viewModel.loadFriends()
@@ -70,6 +72,7 @@ fun FriendListScreen(
 
     Column(
         modifier = Modifier.fillMaxSize()
+            .background(DodgerBlue)
 
 
     ) {
