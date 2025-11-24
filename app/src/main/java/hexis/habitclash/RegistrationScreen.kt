@@ -36,6 +36,7 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
     val context = LocalContext.current
     val isDarkMode = themeViewModel.isDarkMode
     val colors = getAppThemeColors(isDarkMode)
+    val dodgerBlue = Color(0xFF1E90FF)
 
     // Handle authentication state changes
     LaunchedEffect(authState.value) {
@@ -51,7 +52,7 @@ fun RegistrationScreen(navController: NavController, authViewModel: AuthViewMode
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.backgroundColor)
+            .background(dodgerBlue)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center

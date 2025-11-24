@@ -38,6 +38,7 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, them
     val isDarkMode = themeViewModel.isDarkMode
     val colors = getAppThemeColors(isDarkMode)
     val logo = painterResource(R.drawable.hc)
+    val dodgerBlue = Color(0xFF1E90FF)
 
     // Handle navigation based on auth state
     LaunchedEffect(authState.value) {
@@ -55,7 +56,7 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel, them
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.backgroundColor)
+            .background(dodgerBlue)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center

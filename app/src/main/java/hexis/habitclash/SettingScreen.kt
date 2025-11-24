@@ -33,6 +33,7 @@ fun SettingsScreen(
     val userEmail = currentUser?.email ?: "Not logged in"
     val authState = authViewModel.authState.observeAsState()
     val colors = getAppThemeColors(isDarkMode)
+    val dodgerBlue = Color(0xFF1E90FF)
 
     val scrollState = rememberScrollState()
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -66,7 +67,7 @@ fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.backgroundColor)
+            .background(dodgerBlue)
     ) {
         Column(
             modifier = Modifier

@@ -48,6 +48,8 @@ fun AnalyticsScreen(
     // recent completions list (state list so LazyColumn reacts)
     val recent = remember { mutableStateListOf<CompletionRow>() }
 
+    val dodgerBlue = Color(0xFF1E90FF)
+
     // pull logs for the last 14 days
     LaunchedEffect(Unit) {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@LaunchedEffect
@@ -108,7 +110,7 @@ fun AnalyticsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.backgroundColor)
+            .background(dodgerBlue)
     ) {
         // simple top bar so users can go back
         TopAppBar(
