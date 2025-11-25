@@ -71,8 +71,6 @@ import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import hexis.habitclash.Habit
-import hexis.habitclash.LeaderboardEntry
 import hexis.habitclash.ui.theme.AppThemeColors
 import hexis.habitclash.ui.theme.getAppThemeColors
 import kotlin.math.max
@@ -861,11 +859,6 @@ fun resetHabitCompletions(habits: MutableList<Habit>, todayKey: String) {
             db.collection("users").document(userId)
                 .collection("habits").document(habit.id)
                 .update("completionDates", updatedDates, "isCompletedToday", false)
-
-            db.collection("users").document(userId)
-                .collection("completion_logs")
-                .document("${habit.id}_${todayKey}")
-                .delete()
         }
     }
 }

@@ -1,6 +1,5 @@
 package hexis.habitclash
 
-import android.R.attr.visible
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -44,8 +43,6 @@ import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
-import hexis.habitclash.Friend
-import hexis.habitclash.LeaderboardEntry
 import hexis.habitclash.ui.theme.getAppThemeColors
 import kotlinx.coroutines.delay
 
@@ -62,7 +59,7 @@ fun FriendListScreen(
     var showFriendDialog by remember { mutableStateOf(false) }
     val friends = viewModel.friends ?: emptyList()
     val colors = getAppThemeColors(isDarkMode)
-    val DodgerBlue = Color(0xFF1E90FF)
+    val dodgerBlue = Color(0xFF1E90FF)
 
     LaunchedEffect(Unit) {
         viewModel.loadFriends()
@@ -71,8 +68,9 @@ fun FriendListScreen(
 
 
     Column(
-        modifier = Modifier.fillMaxSize()
-            .background(DodgerBlue)
+        modifier = Modifier
+            .fillMaxSize()
+            .background(dodgerBlue)
 
 
     ) {
@@ -97,25 +95,21 @@ fun FriendListScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                items(friends, key = {it.id}) { friend ->
+                items(friends, key = { it.id }) { friend ->
 
-                    var visible by remember {mutableStateOf(false)}
+                    var visible by remember { mutableStateOf(false) }
                     var deleteFriendAnimation by remember { mutableStateOf(false) }
 
                     LaunchedEffect(Unit) {
                         visible = true
                     }
-
                     LaunchedEffect(deleteFriendAnimation) {
-                        if(deleteFriendAnimation){
+                        if (deleteFriendAnimation) {
                             visible = false
                             delay(300)
                             viewModel.deleteFriend(friend)
                         }
                     }
-
-
-
                     AnimatedVisibility(
                         visible = visible,
                         enter = fadeIn() + slideInVertically(initialOffsetY = { it / 4 }),
@@ -151,7 +145,6 @@ fun FriendListScreen(
 
         }
         BottomNavigationBar(navController, isDarkMode)
-
     }
 
     if (showFriendDialog) {
@@ -213,47 +206,39 @@ class GameRepository {
     private val auth = FirebaseAuth.getInstance()
 
 
-
     fun getFriends(onResult: (List<Friend>) -> Unit) {
         val userId = auth.currentUser?.uid ?: run {
             onResult(emptyList())
             return
         }
-
-        db.collection("users").document(userId).get(Source.SERVER)
-            .addOnSuccessListener { doc ->
-                val friendIds = doc.get("friends") as? List<String> ?: emptyList()
-                if (friendIds.isEmpty()) {
-                    onResult(emptyList())
-                    return@addOnSuccessListener
-                }
-
-                // chunking for whereIn limit
-                val chunks = friendIds.chunked(40)
-                val friends = mutableListOf<Friend>()
-                var remaining = chunks.size
-
-                chunks.forEach { chunk ->
-                    db.collection("users").whereIn(FieldPath.documentId(), chunk).get()
-                        .addOnSuccessListener { snapshot ->
-                            friends += snapshot.documents.mapNotNull { d ->
-                                val username = d.getString("username")
-                                val id = d.id
-                                if (username != null) Friend(id, username) else null
-                            }
-                            remaining -= 1
-                            if (remaining == 0) onResult(friends)
-                        }
-                        .addOnFailureListener {
-                            onResult(emptyList())
-                        }
-                }
-            }
-            .addOnFailureListener {
+        db.collection("users").document(userId).get(Source.SERVER).addOnSuccessListener { doc ->
+            val friendIds = doc.get("friends") as? List<String> ?: emptyList()
+            if (friendIds.isEmpty()) {
                 onResult(emptyList())
+                return@addOnSuccessListener
             }
-    }
+            val chunks = friendIds.chunked(40)
+            val friends = mutableListOf<Friend>()
+            var remaining = chunks.size
 
+            chunks.forEach { chunk ->
+                db.collection("users").whereIn(FieldPath.documentId(), chunk).get()
+                    .addOnSuccessListener { snapshot ->
+                        friends += snapshot.documents.mapNotNull { d ->
+                            val username = d.getString("username")
+                            val id = d.id
+                            if (username != null) Friend(id, username) else null
+                        }
+                        remaining -= 1
+                        if (remaining == 0) onResult(friends)
+                    }.addOnFailureListener {
+                        onResult(emptyList())
+                    }
+            }
+        }.addOnFailureListener {
+            onResult(emptyList())
+        }
+    }
 
 
     fun addFriendByUsername(username: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
@@ -288,17 +273,14 @@ class GameRepository {
         Log.d("FriendsRepo", "Deleting friendId=$friendId from user=$currentUserId")
 
         db.collection("users").document(currentUserId)
-            .update("friends", FieldValue.arrayRemove(friendId))
-            .addOnSuccessListener {
+            .update("friends", FieldValue.arrayRemove(friendId)).addOnSuccessListener {
                 Log.d("FriendsRepo", "Successfully removed $friendId")
                 onSuccess()
-            }
-            .addOnFailureListener { e ->
+            }.addOnFailureListener { e ->
                 Log.e("FriendsRepo", "Error deleting friend", e)
                 onError(e.message ?: "Failed to delete friend.")
             }
     }
-
 
 
     fun getFriendsLeaderboard(onResult: (List<LeaderboardEntry>) -> Unit) {
@@ -319,21 +301,21 @@ class GameRepository {
 
             allIds.forEach { friendId ->
                 db.collection("users").document(friendId).get().addOnSuccessListener { friendDoc ->
-                        val username = friendDoc.getString("username") ?: "Unknown"
+                    val username = friendDoc.getString("username") ?: "Unknown"
 
-                        friendDoc.reference.collection("completion_logs").get()
-                            .addOnSuccessListener { logs ->
-                                val score = logs.size()
-                                tempList.add(LeaderboardEntry(name = username, score = score))
-                                processedCount++
+                    friendDoc.reference.collection("completion_logs").get()
+                        .addOnSuccessListener { logs ->
+                            val score = logs.size()
+                            tempList.add(LeaderboardEntry(name = username, score = score))
+                            processedCount++
 
-                                if (processedCount == allIds.size) {
-                                    val ranked = tempList.sortedByDescending { it.score }
-                                        .mapIndexed { index, entry -> entry.copy(rank = index + 1) }
-                                    onResult(ranked)
-                                }
+                            if (processedCount == allIds.size) {
+                                val ranked = tempList.sortedByDescending { it.score }
+                                    .mapIndexed { index, entry -> entry.copy(rank = index + 1) }
+                                onResult(ranked)
                             }
-                    }
+                        }
+                }
             }
         }.addOnFailureListener {
             onResult(emptyList())
