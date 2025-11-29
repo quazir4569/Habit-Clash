@@ -17,6 +17,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -420,7 +421,7 @@ private fun ChipRow(
                                 }
                             } else null,
                             shape = RoundedCornerShape(20.dp),
-                            colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                            colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = colors.accentColor,
                                 selectedLabelColor = Color.White,
                                 containerColor = colors.fieldContainerColor,

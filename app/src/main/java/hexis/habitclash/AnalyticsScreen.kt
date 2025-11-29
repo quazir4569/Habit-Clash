@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import hexis.habitclash.ui.theme.AppThemeColors
 import hexis.habitclash.ui.theme.getAppThemeColors
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -235,7 +236,7 @@ data class CompletionRow(
 @Composable
 private fun ChartCard(
     title: String,
-    colors: hexis.habitclash.ui.theme.AppThemeColors,
+    colors: AppThemeColors,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(

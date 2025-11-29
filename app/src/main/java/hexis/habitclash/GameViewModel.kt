@@ -5,8 +5,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import hexis.habitclash.Friend
-import hexis.habitclash.LeaderboardEntry
 
 class GameViewModel : ViewModel() {
     private val repo = GameRepository()
