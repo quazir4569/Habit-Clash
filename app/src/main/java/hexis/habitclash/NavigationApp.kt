@@ -39,7 +39,7 @@ fun NavigationApp(
             }
 
             composable("FriendList_Screen") {
-                FriendListScreen(navController,  themeViewModel)
+                FriendListScreen(navController, themeViewModel)
             }
 
             // Add Habit
@@ -57,25 +57,23 @@ fun NavigationApp(
                 AnalyticsScreen(navController, themeViewModel)
             }
 
-            // Edit Habit (Corrected route name to match usage)
+            // Edit Habit
             composable(
                 "Edit_Habit/{habitId}",
                 arguments = listOf(navArgument("habitId") { type = NavType.StringType })
             ) { backStackEntry ->
                 val habitId = backStackEntry.arguments?.getString("habitId") ?: ""
-                EditHabitScreen(
-                    navController = navController,
-                    themeViewModel = themeViewModel,
-                    habitId = habitId
-                )
+                EditHabitScreen(navController, themeViewModel, habitId)
             }
 
-            // History screen
+            // History
             composable("History_Screen") {
-                HistoryScreen(
-                    navController = navController,
-                    themeViewModel = themeViewModel
-                )
+                HistoryScreen(navController, themeViewModel)
+            }
+
+            // Forgot / Reset Password
+            composable("ResetPassword_Screen") {
+                ResetPasswordScreen(navController)
             }
         }
     }

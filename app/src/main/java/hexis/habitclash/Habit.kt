@@ -7,7 +7,11 @@ data class Habit(
     val category: String = "",
     val frequency: String = "Daily",
     val goalCount: Int = 1,
+
+    val reminderTimes: List<String> = emptyList(),
+
     val reminderTime: String? = null,
+
     val completionDates: List<String> = listOf(), // For streak calculation
     val currentStreak: Int = 0,                   // For current streak value
     val longestStreak: Int = 0,                   // For best streak value

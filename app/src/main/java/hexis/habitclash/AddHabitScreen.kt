@@ -8,7 +8,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -19,7 +18,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
@@ -80,17 +78,6 @@ fun AddHabitScreen(
                     .fillMaxWidth()
                     .padding(top = 12.dp, bottom = 8.dp, start = 16.dp, end = 16.dp)
             ) {
-                IconButton(
-                    onClick = { navController.popBackStack() },
-                    modifier = Modifier.align(Alignment.CenterStart)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        tint = colors.textColor
-                    )
-                }
-
                 Text(
                     text = "Create Habit",
                     fontSize = 22.sp,
@@ -321,22 +308,35 @@ fun AddHabitScreen(
                                 "isCompletedToday" to false
                             )
 
-                            val db = FirebaseFirestore.getInstance()
+                            val dbRef = FirebaseFirestore.getInstance()
                                 .collection("users")
                                 .document(userId)
                                 .collection("habits")
 
-                            val popped = navController.popBackStack("Dashboard_Screen", inclusive = false)
-                            if (!popped) {
-                                navController.navigate("Dashboard_Screen") {
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
+                            dbRef.add(habit)
+                                .addOnSuccessListener { docRef ->
+                                    // schedule notification if user chose a reminder bucket
+                                    if (reminderTime != null) {
+                                        ReminderScheduler.scheduleRemindersForHabit(
+                                            context = context,
+                                            userId = userId,
+                                            habitId = docRef.id,
+                                            habitTitle = habitName.trim(),
+                                            reminderTime = reminderTime,
+                                            frequency = frequency,
+                                            goalCount = goalCount
+                                        )
+                                    }
 
-                            db.add(habit)
-                                .addOnSuccessListener {
                                     Toast.makeText(context, "Habit added", Toast.LENGTH_SHORT).show()
+
+                                    val popped = navController.popBackStack("Dashboard_Screen", inclusive = false)
+                                    if (!popped) {
+                                        navController.navigate("Dashboard_Screen") {
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
                                 }
                                 .addOnFailureListener {
                                     Toast.makeText(
