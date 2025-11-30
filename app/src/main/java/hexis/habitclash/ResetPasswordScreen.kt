@@ -1,10 +1,12 @@
 package hexis.habitclash
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -17,11 +19,20 @@ fun ResetPasswordScreen(navController: NavHostController) {
     var email by remember { mutableStateOf("") }
     var message by remember { mutableStateOf<String?>(null) }
     var isSuccess by remember { mutableStateOf(false) }
+    val dodgerBlue = Color(0xFF1E90FF)
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .background(dodgerBlue)
+
+    ) {
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+            .background(dodgerBlue),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
@@ -73,4 +84,4 @@ fun ResetPasswordScreen(navController: NavHostController) {
             Text("Back to Login")
         }
     }
-}
+}}

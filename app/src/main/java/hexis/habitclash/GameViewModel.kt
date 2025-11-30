@@ -16,9 +16,6 @@ class GameViewModel : ViewModel() {
     var addFriendMessage by mutableStateOf<String?>(null)
         private set
 
-    var deleteFriendMessage by mutableStateOf("")
-        private set
-
     var leaderboard = mutableStateOf<List<LeaderboardEntry>>(emptyList())
         private set
 
