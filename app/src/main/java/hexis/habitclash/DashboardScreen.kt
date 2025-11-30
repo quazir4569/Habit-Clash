@@ -2,6 +2,7 @@ package hexis.habitclash
 
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -26,7 +27,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -53,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -117,6 +121,14 @@ fun DashboardScreen(
     val completedHabits = habits.count { it.completionDates.contains(todayKey) }
     var leaderboard by remember { mutableStateOf<List<LeaderboardEntry>>(emptyList()) }
 
+    var rotateAnimation by remember { mutableStateOf(false) }
+
+    val rotationPosition by animateFloatAsState(
+        targetValue = if (rotateAnimation) 720f else 0f,
+        animationSpec = tween(durationMillis = 1000),
+        label = "rotation_animation"
+    )
+
     // Compute badges achieved (scalable for future milestones)
     val achievedBadges = milestoneBadges.map { badge ->
         badge.copy(isAchieved = (totalCurrentStreak >= badge.milestone))
@@ -127,9 +139,7 @@ fun DashboardScreen(
         val db = FirebaseFirestore.getInstance()
         viewModel.loadFriends()
 
-        db.collection("users")
-            .document(userId)
-            .get()
+        db.collection("users").document(userId).get()
             .addOnSuccessListener { d -> username = d.getString("username") ?: "User" }
 
         db.collection("users").document(userId).collection("habits")
@@ -141,6 +151,8 @@ fun DashboardScreen(
                     }
                 }
             }
+
+        rotateAnimation = true
     }
 
     LaunchedEffect(progress) {
@@ -153,8 +165,8 @@ fun DashboardScreen(
         LaunchedEffect(Unit) { navController.navigate("Login_Screen") }
     }
 
-    progress = if (totalHabits > 0) completedHabits.toFloat() / totalHabits else 0f
-    /*if (progress == 1f && !completeDialog) {completeDialog = true}*/
+    progress =
+        if (totalHabits > 0) completedHabits.toFloat() / totalHabits else 0f/*if (progress == 1f && !completeDialog) {completeDialog = true}*/
 
     Column(
         modifier = Modifier
@@ -190,13 +202,13 @@ fun DashboardScreen(
                             contentDescription = null,
                             modifier = Modifier
                                 .size(60.dp)
+                                .graphicsLayer(rotationY = rotationPosition)
                         )
                         Box(
                             modifier = Modifier
                                 .size(60.dp)
                                 .clip(CircleShape)
-                                .background(colors.accentColor),
-                            contentAlignment = Alignment.Center
+                                .background(colors.accentColor), contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Person,
@@ -299,8 +311,7 @@ fun DashboardScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
 
@@ -310,11 +321,10 @@ fun DashboardScreen(
                                 fetchLeaderboard { data ->
                                     leaderboard = data
                                 }
-                            }
-                            ) {
+                            }) {
                                 Text(
                                     "Leaderboard",
-                                    fontSize = 12.sp,
+                                    fontSize = 10.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = colors.textColor
                                 )
@@ -322,11 +332,10 @@ fun DashboardScreen(
                             Button(onClick = {
                                 showMultiplayerLeaderboardDialog = true
                                 viewModel.loadFriendsLeaderboard()
-                            }
-                            ) {
+                            }) {
                                 Text(
                                     "Multiplayer",
-                                    fontSize = 12.sp,
+                                    fontSize = 10.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = colors.textColor
                                 )
@@ -335,8 +344,7 @@ fun DashboardScreen(
                             if (showMultiplayerLeaderboardDialog) {
                                 MultiplayerDialog(
                                     leaderboard = viewModel.leaderboard.value,
-                                    onDismiss = { showMultiplayerLeaderboardDialog = false }
-                                )
+                                    onDismiss = { showMultiplayerLeaderboardDialog = false })
                             }
                         }
                     }
@@ -399,26 +407,20 @@ fun DashboardScreen(
                                 val isCheckedToday = habit.completionDates.contains(todayKey)
 
                                 Checkbox(
-                                    checked = isCheckedToday,
-                                    onCheckedChange = { isChecked ->
+                                    checked = isCheckedToday, onCheckedChange = { isChecked ->
                                         val userId = FirebaseAuth.getInstance().currentUser?.uid
                                         if (userId != null && habit.id.isNotEmpty()) {
                                             val updatedDates =
-                                                if (isChecked)
-                                                    StreakCalculator.addTodayCompletion(
-                                                        habit.completionDates,
-                                                        todayKey
-                                                    )
-                                                else
-                                                    StreakCalculator.removeTodayCompletion(
-                                                        habit.completionDates,
-                                                        todayKey
-                                                    )
+                                                if (isChecked) StreakCalculator.addTodayCompletion(
+                                                    habit.completionDates, todayKey
+                                                )
+                                                else StreakCalculator.removeTodayCompletion(
+                                                    habit.completionDates, todayKey
+                                                )
 
                                             val newCurrent =
                                                 StreakCalculator.calculateCurrentStreak(
-                                                    updatedDates,
-                                                    todayKey
+                                                    updatedDates, todayKey
                                                 )
                                             val newLongest = max(
                                                 StreakCalculator.calculateLongestStreak(updatedDates),
@@ -503,15 +505,13 @@ fun DashboardScreen(
                                             habits.count { it.completionDates.contains(todayKey) }
                                         progress =
                                             if (habits.isNotEmpty()) checkedCount.toFloat() / habits.size else 0f
-                                    }
-                                )
+                                    })
 
                                 HabitItem(
                                     habit = habit,
                                     isDarkMode = isDarkMode,
                                     colors = colors,
-                                    onHabitClick = { navController.navigate("Edit_Habit/${habit.id}") }
-                                )
+                                    onHabitClick = { navController.navigate("Edit_Habit/${habit.id}") })
                             }
                             if (index < habits.size - 1) Spacer(modifier = Modifier.height(24.dp))
                         }
@@ -528,12 +528,12 @@ fun DashboardScreen(
                         TextButton(onClick = {
 
                             completeDialog = false
+                            resetHabitCompletions(habits, todayKey)
 
                         }) {
                             Text("Lets Go back!")
                         }
-                    }
-                )
+                    })
             }
 
             if (showDialog) {
@@ -545,10 +545,28 @@ fun DashboardScreen(
                     ) {
                         AlertDialog(
                             onDismissRequest = { showDialog = false },
-                            title = { Text("Leaderboard") },
+                            title = { Text("Main Leaderboard") },
                             text = {
 
-                                Column(modifier = Modifier.fillMaxWidth()) {
+                                Column(modifier = Modifier.fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally) {
+
+                                    Box(
+                                        modifier = Modifier
+                                            .size(60.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.Red)
+                                            .graphicsLayer(rotationX = rotationPosition),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Face,
+                                            contentDescription = "Profile",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(36.dp)
+
+                                        )
+                                    }
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
@@ -581,8 +599,7 @@ fun DashboardScreen(
                                     showDialog = false
 
                                 }) { Text("Return!") }
-                            }
-                        )
+                            })
                     }
                 }
             }
@@ -611,8 +628,7 @@ fun DashboardScreen(
                                         Text(
                                             text = it,
                                             color = if (it.contains(
-                                                    "success",
-                                                    true
+                                                    "success", true
                                                 )
                                             ) Color.Green else Color.Red,
                                             modifier = Modifier.padding(top = 6.dp)
@@ -634,8 +650,7 @@ fun DashboardScreen(
                                 Button(onClick = { showFriendDialog = false }) {
                                     Text("Cancel")
                                 }
-                            }
-                        )
+                            })
                     }
                 }
             }
@@ -647,10 +662,7 @@ fun DashboardScreen(
 
 @Composable
 fun HabitItem(
-    habit: Habit,
-    isDarkMode: Boolean,
-    colors: AppThemeColors,
-    onHabitClick: () -> Unit
+    habit: Habit, isDarkMode: Boolean, colors: AppThemeColors, onHabitClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -668,14 +680,10 @@ fun HabitItem(
                 color = colors.textColor
             )
             if (habit.description.isNotBlank()) Text(
-                habit.description,
-                color = colors.secondaryTextColor,
-                fontSize = 12.sp
+                habit.description, color = colors.secondaryTextColor, fontSize = 12.sp
             )
             if (habit.category.isNotBlank()) Text(
-                "Category: ${habit.category}",
-                color = colors.secondaryTextColor,
-                fontSize = 12.sp
+                "Category: ${habit.category}", color = colors.secondaryTextColor, fontSize = 12.sp
             )
             Text(
                 "Frequency: ${habit.frequency}, Goal: ${habit.goalCount}",
@@ -709,8 +717,7 @@ fun HabitItem(
 fun fetchLeaderboard(onResult: (List<LeaderboardEntry>) -> Unit) {
     val db = FirebaseFirestore.getInstance()
 
-    db.collection("users").get()
-        .addOnSuccessListener { result ->
+    db.collection("users").get().addOnSuccessListener { result ->
             val tempList = mutableListOf<LeaderboardEntry>()
             var processedCount = 0
 
@@ -727,25 +734,21 @@ fun fetchLeaderboard(onResult: (List<LeaderboardEntry>) -> Unit) {
                         val completedCount = actions.size()
                         tempList.add(
                             LeaderboardEntry(
-                                rank = 0,
-                                name = username,
-                                score = completedCount
+                                rank = 0, name = username, score = completedCount
                             )
                         )
 
                         processedCount++
                         if (processedCount == result.size()) {
-                            val ranked = tempList
-                                .sortedByDescending { it.score }
-                                .mapIndexed { idx, entry ->
-                                    entry.copy(rank = idx + 1)
-                                }
+                            val ranked =
+                                tempList.sortedByDescending { it.score }.mapIndexed { idx, entry ->
+                                        entry.copy(rank = idx + 1)
+                                    }
                             onResult(ranked)
                         }
                     }
             }
-        }
-        .addOnFailureListener { e ->
+        }.addOnFailureListener { e ->
             Log.e("Firestore", "Error fetching leaderboard", e)
             onResult(emptyList())
         }
@@ -753,9 +756,22 @@ fun fetchLeaderboard(onResult: (List<LeaderboardEntry>) -> Unit) {
 
 @Composable
 fun MultiplayerDialog(
-    leaderboard: List<LeaderboardEntry>,
-    onDismiss: () -> Unit
+    leaderboard: List<LeaderboardEntry>, onDismiss: () -> Unit
 ) {
+
+    var rotateAnimation by remember { mutableStateOf(false) }
+
+    val rotationPosition by animateFloatAsState(
+        targetValue = if (rotateAnimation) 360f else 0f,
+        animationSpec = tween(durationMillis = 1000),
+        label = "rotation_animation"
+    )
+
+    LaunchedEffect(Unit) {
+        rotateAnimation = true
+
+    }
+
     Dialog(onDismissRequest = onDismiss) {
         AnimatedVisibility(
             visible = true,
@@ -766,7 +782,26 @@ fun MultiplayerDialog(
                 onDismissRequest = onDismiss,
                 title = { Text("Multiplayer Leaderboard") },
                 text = {
-                    Column(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+
+                        Box(
+                            modifier = Modifier
+                                .size(60.dp)
+                                .clip(CircleShape)
+                                .background(Color.Yellow),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ThumbUp,
+                                contentDescription = "Profile",
+                                tint = Color.White,
+                                modifier = Modifier.size(36.dp)
+                                    .graphicsLayer(rotationZ = rotationPosition)
+                            )
+                        }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -799,8 +834,28 @@ fun MultiplayerDialog(
                     TextButton(onClick = onDismiss) {
                         Text("Return!")
                     }
-                }
+                })
+        }
+    }
+}
+
+fun resetHabitCompletions(habits: MutableList<Habit>, todayKey: String) {
+    val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+    val db = FirebaseFirestore.getInstance()
+
+    habits.forEachIndexed { index, habit ->
+        if (habit.completionDates.contains(todayKey)) {
+            val updatedDates = StreakCalculator.removeTodayCompletion(habit.completionDates, todayKey)
+            habits[index] = habit.copy(
+                isCompletedToday = false,
+                completionDates = updatedDates,
+                currentStreak = StreakCalculator.calculateCurrentStreak(updatedDates, todayKey),
+                totalCompletions = updatedDates.size
             )
+
+            db.collection("users").document(userId)
+                .collection("habits").document(habit.id)
+                .update("completionDates", updatedDates, "isCompletedToday", false)
         }
     }
 }

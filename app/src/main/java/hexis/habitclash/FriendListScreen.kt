@@ -2,6 +2,7 @@ package hexis.habitclash
 
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -12,16 +13,22 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -33,7 +40,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -61,8 +70,17 @@ fun FriendListScreen(
     val colors = getAppThemeColors(isDarkMode)
     val dodgerBlue = Color(0xFF1E90FF)
 
+    var rotateAnimation by remember { mutableStateOf(false) }
+
+    val rotationPosition by animateFloatAsState(
+        targetValue = if (rotateAnimation) 360f else 0f,
+        animationSpec = tween(durationMillis = 1000),
+        label = "rotation_animation"
+    )
+
     LaunchedEffect(Unit) {
         viewModel.loadFriends()
+        rotateAnimation = true
 
     }
 
@@ -71,8 +89,6 @@ fun FriendListScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(dodgerBlue)
-
-
     ) {
 
 
@@ -87,6 +103,23 @@ fun FriendListScreen(
             Text(
                 text = "Friend List", style = MaterialTheme.typography.titleLarge
             )
+
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(CircleShape)
+                    .background(Color.Green)
+                    .graphicsLayer(rotationY = rotationPosition),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Profile",
+                    tint = Color.White,
+                    modifier = Modifier.size(36.dp)
+
+                )
+            }
 
             Button(onClick = { showFriendDialog = true }) {
                 Text("Add Friend")
