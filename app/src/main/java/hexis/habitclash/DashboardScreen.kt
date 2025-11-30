@@ -154,7 +154,6 @@ fun DashboardScreen(
                     }
                 }
             }
-
         rotateAnimation = true
     }
 
@@ -547,6 +546,15 @@ fun DashboardScreen(
             }
 
             if (showDialog) {
+                var rotateAnimation by remember { mutableStateOf(false) }
+                val rotationPosition by animateFloatAsState(
+                    targetValue = if (rotateAnimation) 360f else 0f,
+                    animationSpec = tween(durationMillis = 1000),
+                    label = "rotation_animation"
+                )
+                LaunchedEffect(Unit) {
+                    rotateAnimation = true
+                }
                 Dialog(onDismissRequest = { showDialog = false }) {
                     AnimatedVisibility(
                         visible = showDialog,
@@ -566,7 +574,8 @@ fun DashboardScreen(
                                             .size(60.dp)
                                             .clip(CircleShape)
                                             .background(Color.Red)
-                                            .graphicsLayer(rotationX = rotationPosition),
+                                            .graphicsLayer(rotationY = rotationPosition),
+
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
