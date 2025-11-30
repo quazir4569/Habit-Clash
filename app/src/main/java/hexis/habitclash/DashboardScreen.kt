@@ -750,7 +750,7 @@ fun fetchLeaderboard(onResult: (List<LeaderboardEntry>) -> Unit) {
 
                 userDoc.reference.collection("completion_logs").get()
                     .addOnSuccessListener { actions ->
-                        val completedCount = actions.size()
+                        val completedCount = actions.size() * 10
                         tempList.add(
                             LeaderboardEntry(
                                 rank = 0, name = username, score = completedCount

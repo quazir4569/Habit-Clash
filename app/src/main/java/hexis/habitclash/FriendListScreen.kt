@@ -338,7 +338,7 @@ class GameRepository {
 
                     friendDoc.reference.collection("completion_logs").get()
                         .addOnSuccessListener { logs ->
-                            val score = logs.size()
+                            val score = logs.size() * 10
                             tempList.add(LeaderboardEntry(name = username, score = score))
                             processedCount++
 
